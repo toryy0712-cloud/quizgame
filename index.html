@@ -174,14 +174,15 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 🔥 중요: 이 부분을 시현이가 웹 앱 추가하고 받은 코드로 덮어쓰기!
+        // 시현이가 발급받은 실제 Firebase 설정 정보 적용
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyCgbrP1rbGQWFOYlccfTwaguzIYPs_QvTQ",
+            authDomain: "quizgame-7a7ef.firebaseapp.com",
+            projectId: "quizgame-7a7ef",
+            storageBucket: "quizgame-7a7ef.firebasestorage.app",
+            messagingSenderId: "1031008633634",
+            appId: "1:1031008633634:web:90439a49722a959b8a9b7b",
+            measurementId: "G-VB6D1N016H"
         };
 
         let app, db;
@@ -189,7 +190,7 @@
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
         } catch (e) {
-            console.error("Firebase 초기화 에러 (설정값을 확인하세요):", e);
+            console.error("Firebase 초기화 에러:", e);
         }
 
         let quizData = [];
@@ -210,25 +211,19 @@
         const pwInput = document.getElementById("admin-pw");
         const quizListEl = document.getElementById("quiz-list");
 
-        // --- Firebase에서 퀴즈 가져오기 ---
+        // --- Firestore에서 퀴즈 가져오기 ---
         async function fetchQuizzes() {
             quizData = [];
             try {
-                if(firebaseConfig.apiKey === "YOUR_API_KEY") {
-                    throw new Error("Firebase 설정이 안되어있어 임시 데이터를 사용합니다.");
-                }
                 const querySnapshot = await getDocs(collection(db, "quizzes"));
                 querySnapshot.forEach((doc) => {
                     quizData.push({ id: doc.id, ...doc.data() });
                 });
+                startQuiz();
             } catch (e) {
-                console.warn(e.message);
-                // 파이어베이스 연동 전 테스트용 더미 데이터
-                quizData = [
-                    { id: 'dummy1', question: "1. 파이어베이스 연동 전 테스트 질문입니다.", options: ["테스트 1", "테스트 2", "테스트 3", "테스트 4"], answer: 0 }
-                ];
+                console.error("데이터 로드 실패:", e);
+                loadingEl.innerText = "데이터를 불러올 수 없습니다. Firestore 규칙 설정을 확인해주세요.";
             }
-            startQuiz();
         }
 
         // --- 메인 퀴즈 로직 ---
@@ -302,7 +297,7 @@
 
         document.getElementById("close-admin-btn").onclick = () => {
             adminModal.style.display = "none";
-            fetchQuizzes(); // 닫을 때 변경사항 반영해서 게임 재시작
+            fetchQuizzes(); // 닫을 때 변경사항 반영해서 퀴즈 재시작
         };
 
         function renderAdminList() {
@@ -329,13 +324,12 @@
                     const id = e.target.getAttribute("data-id");
                     if(confirm("이 퀴즈를 삭제하시겠습니까?")) {
                         try {
-                            if(id.startsWith('dummy')) throw new Error("더미 데이터는 삭제불가");
                             await deleteDoc(doc(db, "quizzes", id));
                             alert("삭제되었습니다.");
                             await fetchQuizzes(); 
                             renderAdminList();
                         } catch (err) {
-                            alert("파이어베이스 연동 후 삭제 가능합니다.");
+                            alert("삭제 권한이 없습니다. Firebase Firestore 규칙을 확인하세요.");
                         }
                     }
                 };
@@ -365,6 +359,7 @@
                 await addDoc(collection(db, "quizzes"), newQuiz);
                 alert("퀴즈가 추가되었습니다!");
                 
+                // 입력칸 초기화
                 document.getElementById("new-question").value = "";
                 document.getElementById("new-opt1").value = "";
                 document.getElementById("new-opt2").value = "";
@@ -375,10 +370,11 @@
                 await fetchQuizzes(); 
                 renderAdminList();
             } catch (err) {
-                alert("퀴즈 추가 실패. 파이어베이스 설정을 확인하세요.");
+                alert("퀴즈 추가 실패. Firebase Firestore 규칙 설정을 확인하세요.");
             }
         };
 
+        // 앱 시작 시 데이터 로드
         fetchQuizzes();
     </script>
 </body>
