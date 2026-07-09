@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시현이의 퀴즈 사이트</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        
+        /* 좌측 상단 관리자 버튼 */
+        #admin-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: #34495e;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        #admin-btn:hover { background-color: #2c3e50; }
+
+        .quiz-container { 
+            background-color: white; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            width: 90%; 
+            max-width: 600px; 
+            padding: 2.5rem; 
+            text-align: center; 
+        }
+        h1 { color: #2c3e50; margin-bottom: 1.5rem; }
+        #question { 
+            font-size: 1.3rem; 
+            font-weight: 600;
+            color: #34495e;
+            margin-bottom: 25px; 
+        }
+        .btn { 
+            background-color: #3498db; 
+            color: white; 
+            border: none; 
+            padding: 12px 20px; 
+            margin: 8px 0; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 1.05rem; 
+            width: 100%; 
+            transition: background-color 0.3s, transform 0.1s; 
+        }
+        .btn:hover { background-color: #2980b9; }
+        .btn:active { transform: scale(0.98); }
+        
+        #result { 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            color: #e74c3c;
+            margin-top: 20px; 
+            display: none; 
+        }
+        #restart { display: none; margin-top: 25px; background-color: #2ecc71; }
+        #restart:hover { background-color: #27ae60; }
+        #loading { font-size: 1.2rem; color: #7f8c8d; font-weight: bold; }
+
+        /* 모달 및 관리자 모드 UI */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 10px;
+            width: 90%; max-width: 500px; text-align: center;
+        }
+        .admin-panel {
+            background: white; padding: 2rem; border-radius: 10px;
+            width: 90%; max-width: 800px; height: 80vh; 
+            display: flex; flex-direction: column;
+        }
+        
+        /* 스크롤바가 적용된 퀴즈 리스트 영역 */
+        .quiz-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 20px;
+            text-align: left;
+            background: #fdfdfd;
+        }
+        .quiz-item {
+            border-bottom: 1px solid #eee; padding: 10px 0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .quiz-item:last-child { border-bottom: none; }
+        .quiz-info { flex-grow: 1; }
+        .delete-btn { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+        .delete-btn:hover { background-color: #c0392b; }
+        
+        /* 퀴즈 추가 폼 */
+        .add-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+        .add-form input, .add-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .add-btn { background-color: #2ecc71; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        .add-btn:hover { background-color: #27ae60; }
+        .close-admin { background-color: #95a5a6; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <button id="admin-btn">⚙️ 관리자</button>
+
+    <div class="quiz-container">
+        <h1>✨ 퀴즈 타임!</h1>
+        <div id="loading">퀴즈를 불러오는 중입니다...</div>
+        
+        <div id="quiz" style="display: none;">
+            <div id="question">질문이 여기에 표시됩니다.</div>
+            <div id="options"></div>
+        </div>
+        <div id="result"></div>
+        <button id="restart" class="btn">처음부터 다시 하기</button>
+    </div>
+
+    <div id="password-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>관리자 인증</h2>
+            <input type="password" id="admin-pw" placeholder="비밀번호 입력" style="padding: 10px; width: 80%; margin-bottom: 15px;">
+            <br>
+            <button class="btn" id="pw-submit-btn" style="width: auto; padding: 10px 20px;">확인</button>
+            <button class="btn" id="pw-cancel-btn" style="width: auto; padding: 10px 20px; background-color: #95a5a6;">취소</button>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="modal-overlay">
+        <div class="admin-panel">
+            <h2>🛠️ 관리자 모드</h2>
+            
+            <div class="quiz-list-container" id="quiz-list">
+                </div>
+
+            <div class="add-form">
+                <input type="text" id="new-question" placeholder="질문을 입력하세요">
+                <input type="text" id="new-opt1" placeholder="선택지 1">
+                <input type="text" id="new-opt2" placeholder="선택지 2">
+                <input type="text" id="new-opt3" placeholder="선택지 3">
+                <input type="text" id="new-opt4" placeholder="선택지 4">
+                <select id="new-answer">
+                    <option value="0">정답: 선택지 1</option>
+                    <option value="1">정답: 선택지 2</option>
+                    <option value="2">정답: 선택지 3</option>
+                    <option value="3">정답: 선택지 4</option>
+                </select>
+                <button class="add-btn" id="add-quiz-btn">새 퀴즈 추가하기</button>
+            </div>
+            
+            <button class="close-admin" id="close-admin-btn">닫기</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // 🔥 중요: 이 부분을 시현이가 웹 앱 추가하고 받은 코드로 덮어쓰기!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        let app, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Firebase 초기화 에러 (설정값을 확인하세요):", e);
+        }
+
+        let quizData = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        // DOM 요소들
+        const loadingEl = document.getElementById("loading");
+        const quizDiv = document.getElementById("quiz");
+        const questionEl = document.getElementById("question");
+        const optionsEl = document.getElementById("options");
+        const resultEl = document.getElementById("result");
+        const restartBtn = document.getElementById("restart");
+
+        const adminBtn = document.getElementById("admin-btn");
+        const pwModal = document.getElementById("password-modal");
+        const adminModal = document.getElementById("admin-modal");
+        const pwInput = document.getElementById("admin-pw");
+        const quizListEl = document.getElementById("quiz-list");
+
+        // --- Firebase에서 퀴즈 가져오기 ---
+        async function fetchQuizzes() {
+            quizData = [];
+            try {
+                if(firebaseConfig.apiKey === "YOUR_API_KEY") {
+                    throw new Error("Firebase 설정이 안되어있어 임시 데이터를 사용합니다.");
+                }
+                const querySnapshot = await getDocs(collection(db, "quizzes"));
+                querySnapshot.forEach((doc) => {
+                    quizData.push({ id: doc.id, ...doc.data() });
+                });
+            } catch (e) {
+                console.warn(e.message);
+                // 파이어베이스 연동 전 테스트용 더미 데이터
+                quizData = [
+                    { id: 'dummy1', question: "1. 파이어베이스 연동 전 테스트 질문입니다.", options: ["테스트 1", "테스트 2", "테스트 3", "테스트 4"], answer: 0 }
+                ];
+            }
+            startQuiz();
+        }
+
+        // --- 메인 퀴즈 로직 ---
+        function startQuiz() {
+            loadingEl.style.display = "none";
+            
+            if(quizData.length === 0) {
+                quizDiv.style.display = "block";
+                questionEl.innerText = "현재 등록된 퀴즈가 없습니다. 관리자 모드에서 추가해주세요.";
+                optionsEl.innerHTML = "";
+                return;
+            }
+
+            currentQuestionIndex = 0;
+            score = 0;
+            resultEl.style.display = "none";
+            restartBtn.style.display = "none";
+            quizDiv.style.display = "block";
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const currentQuiz = quizData[currentQuestionIndex];
+            questionEl.innerText = currentQuiz.question;
+            optionsEl.innerHTML = "";
+
+            currentQuiz.options.forEach((option, index) => {
+                const button = document.createElement("button");
+                button.innerText = option;
+                button.classList.add("btn");
+                button.onclick = () => selectAnswer(index);
+                optionsEl.appendChild(button);
+            });
+        }
+
+        function selectAnswer(selectedIndex) {
+            if (selectedIndex === parseInt(quizData[currentQuestionIndex].answer)) {
+                score++;
+            }
+            currentQuestionIndex++;
+            
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            quizDiv.style.display = "none";
+            resultEl.style.display = "block";
+            resultEl.innerHTML = `수고하셨습니다!<br>총 ${quizData.length}문제 중 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
+            restartBtn.style.display = "block";
+        }
+        
+        restartBtn.onclick = startQuiz;
+
+        // --- 관리자 모드 로직 ---
+        adminBtn.onclick = () => { pwModal.style.display = "flex"; pwInput.value = ""; };
+        document.getElementById("pw-cancel-btn").onclick = () => { pwModal.style.display = "none"; };
+
+        document.getElementById("pw-submit-btn").onclick = () => {
+            if (pwInput.value === "050126") {
+                pwModal.style.display = "none";
+                adminModal.style.display = "flex";
+                renderAdminList();
+            } else {
+                alert("비밀번호가 틀렸습니다.");
+            }
+        };
+
+        document.getElementById("close-admin-btn").onclick = () => {
+            adminModal.style.display = "none";
+            fetchQuizzes(); // 닫을 때 변경사항 반영해서 게임 재시작
+        };
+
+        function renderAdminList() {
+            quizListEl.innerHTML = "";
+            if (quizData.length === 0) {
+                quizListEl.innerHTML = "<p>등록된 퀴즈가 없습니다.</p>";
+                return;
+            }
+            quizData.forEach((q) => {
+                const div = document.createElement("div");
+                div.className = "quiz-item";
+                div.innerHTML = `
+                    <div class="quiz-info">
+                        <strong>Q: ${q.question}</strong><br>
+                        <span style="font-size: 0.9em; color: #555;">정답: ${q.options[q.answer]}</span>
+                    </div>
+                    <button class="delete-btn" data-id="${q.id}">삭제</button>
+                `;
+                quizListEl.appendChild(div);
+            });
+
+            document.querySelectorAll(".delete-btn").forEach(btn => {
+                btn.onclick = async (e) => {
+                    const id = e.target.getAttribute("data-id");
+                    if(confirm("이 퀴즈를 삭제하시겠습니까?")) {
+                        try {
+                            if(id.startsWith('dummy')) throw new Error("더미 데이터는 삭제불가");
+                            await deleteDoc(doc(db, "quizzes", id));
+                            alert("삭제되었습니다.");
+                            await fetchQuizzes(); 
+                            renderAdminList();
+                        } catch (err) {
+                            alert("파이어베이스 연동 후 삭제 가능합니다.");
+                        }
+                    }
+                };
+            });
+        }
+
+        document.getElementById("add-quiz-btn").onclick = async () => {
+            const qInput = document.getElementById("new-question").value;
+            const opt1 = document.getElementById("new-opt1").value;
+            const opt2 = document.getElementById("new-opt2").value;
+            const opt3 = document.getElementById("new-opt3").value;
+            const opt4 = document.getElementById("new-opt4").value;
+            const ans = document.getElementById("new-answer").value;
+
+            if(!qInput || !opt1 || !opt2 || !opt3 || !opt4) {
+                alert("모든 입력칸을 채워주세요!");
+                return;
+            }
+
+            const newQuiz = {
+                question: qInput,
+                options: [opt1, opt2, opt3, opt4],
+                answer: parseInt(ans)
+            };
+
+            try {
+                await addDoc(collection(db, "quizzes"), newQuiz);
+                alert("퀴즈가 추가되었습니다!");
+                
+                document.getElementById("new-question").value = "";
+                document.getElementById("new-opt1").value = "";
+                document.getElementById("new-opt2").value = "";
+                document.getElementById("new-opt3").value = "";
+                document.getElementById("new-opt4").value = "";
+                document.getElementById("new-answer").value = "0";
+
+                await fetchQuizzes(); 
+                renderAdminList();
+            } catch (err) {
+                alert("퀴즈 추가 실패. 파이어베이스 설정을 확인하세요.");
+            }
+        };
+
+        fetchQuizzes();
+    </script>
+</body>
+</html>
