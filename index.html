@@ -48,14 +48,13 @@
         }
         h1 { color: #2c3e50; margin-bottom: 1.5rem; }
         
-        /* 퀴즈 이미지 스타일 */
         #quiz-image {
             max-width: 100%;
             max-height: 250px;
             object-fit: contain;
             margin-bottom: 15px;
             border-radius: 8px;
-            display: none; /* 기본적으로 숨김 */
+            display: none; 
         }
 
         #question { 
@@ -129,7 +128,6 @@
         
         .add-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
         .add-form input, .add-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        /* 파일 입력 필드 스타일 */
         #new-image { padding: 5px; font-size: 0.9rem; } 
         
         .add-btn { background-color: #2ecc71; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; }
@@ -193,29 +191,13 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        // Firebase Storage 임포트 추가
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCgbrP1rbGQWFOYlccfTwaguzIYPs_QvTQ",
-            authDomain: "quizgame-7a7ef.firebaseapp.com",
-            projectId: "quizgame-7a7ef",
-            storageBucket: "quizgame-7a7ef.firebasestorage.app",
-            messagingSenderId: "1031008633634",
-            appId: "1:1031008633634:web:90439a49722a959b8a9b7b",
-            measurementId: "G-VB6D1N016H"
-        };
-
-        let app, db, storage;
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            storage = getStorage(app); // Storage 초기화
-        } catch (e) {
-            console.error("Firebase 초기화 에러:", e);
-        }
+        // 프로젝트 주소 및 퍼블리시어블 키 완벽하게 세팅 완료
+        const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bnR4anNic3d5aHVtZ253bm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2Nzg0MDksImV4cCI6MjA5OTI1NDQwOX0.dD5xhlttjYwcnD2qdRzQCtQyDDa973A3-JppmNSSGnA';
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let quizData = [];
         let currentQuestionIndex = 0;
@@ -223,7 +205,7 @@
 
         const loadingEl = document.getElementById("loading");
         const quizDiv = document.getElementById("quiz");
-        const quizImageEl = document.getElementById("quiz-image"); // 이미지 엘리먼트
+        const quizImageEl = document.getElementById("quiz-image"); 
         const questionEl = document.getElementById("question");
         const optionsEl = document.getElementById("options");
         const resultEl = document.getElementById("result");
@@ -234,15 +216,15 @@
         const adminModal = document.getElementById("admin-modal");
         const pwInput = document.getElementById("admin-pw");
         const quizListEl = document.getElementById("quiz-list");
-        const addQuizBtn = document.getElementById("add-quiz-btn"); // 추가 버튼
+        const addQuizBtn = document.getElementById("add-quiz-btn");
 
         async function fetchQuizzes() {
             quizData = [];
             try {
-                const querySnapshot = await getDocs(collection(db, "quizzes"));
-                querySnapshot.forEach((doc) => {
-                    quizData.push({ id: doc.id, ...doc.data() });
-                });
+                const { data, error } = await supabase.from('quizzes').select('*');
+                if (error) throw error;
+                
+                quizData = data || [];
                 startQuiz();
             } catch (e) {
                 console.error("데이터 로드 실패:", e);
@@ -273,8 +255,7 @@
             const currentQuiz = quizData[currentQuestionIndex];
             questionEl.innerText = currentQuiz.question;
             
-            // 저장된 이미지 URL이 있으면 표시, 없으면 숨김
-            if (currentQuiz.imageUrl) {
+            if (currentQuiz.imageUrl && currentQuiz.imageUrl.trim() !== "") {
                 quizImageEl.src = currentQuiz.imageUrl;
                 quizImageEl.style.display = "inline-block";
             } else {
@@ -293,7 +274,7 @@
         }
 
         function selectAnswer(selectedIndex) {
-            if (selectedIndex === parseInt(quizData[currentQuestionIndex].answer)) {
+            if (selectedIndex === parseInt(currentQuizAnswer())) {
                 score++;
             }
             currentQuestionIndex++;
@@ -303,6 +284,10 @@
             } else {
                 showResult();
             }
+        }
+        
+        function currentQuizAnswer() {
+            return quizData[currentQuestionIndex].answer;
         }
 
         function showResult() {
@@ -341,8 +326,7 @@
             quizData.forEach((q) => {
                 const div = document.createElement("div");
                 div.className = "quiz-item";
-                // 이미지가 포함된 퀴즈인지 아이콘으로 표시
-                const imgIcon = q.imageUrl ? " 🖼️" : "";
+                const imgIcon = (q.imageUrl && q.imageUrl.trim() !== "") ? " 🖼️" : "";
                 div.innerHTML = `
                     <div class="quiz-info">
                         <strong>Q: ${q.question}${imgIcon}</strong><br>
@@ -358,7 +342,9 @@
                     const id = e.target.getAttribute("data-id");
                     if(confirm("이 퀴즈를 삭제하시겠습니까?")) {
                         try {
-                            await deleteDoc(doc(db, "quizzes", id));
+                            const { error } = await supabase.from('quizzes').delete().eq('id', id);
+                            if (error) throw error;
+                            
                             alert("삭제되었습니다.");
                             await fetchQuizzes(); 
                             renderAdminList();
@@ -372,7 +358,7 @@
 
         addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
-            const imageFile = document.getElementById("new-image").files[0]; // 선택한 파일 가져오기
+            const imageFile = document.getElementById("new-image").files[0];
             const opt1 = document.getElementById("new-opt1").value;
             const opt2 = document.getElementById("new-opt2").value;
             const opt3 = document.getElementById("new-opt3").value;
@@ -388,29 +374,39 @@
             addQuizBtn.disabled = true;
 
             try {
-                let imageUrl = "";
-                // 1. 이미지가 첨부되었다면 Firebase Storage에 먼저 업로드
+                let finalImageUrl = "";
+                
                 if (imageFile) {
-                    // 고유한 파일명을 위해 Date.now() 추가
-                    const imageRef = ref(storage, `quiz_images/${Date.now()}_${imageFile.name}`);
-                    const snapshot = await uploadBytes(imageRef, imageFile);
-                    imageUrl = await getDownloadURL(snapshot.ref); // 업로드된 이미지 URL 가져오기
+                    const fileExt = imageFile.name.split('.').pop();
+                    const fileName = `${Date.now()}.${fileExt}`;
+                    
+                    const { error: uploadError } = await supabase.storage
+                        .from('quiz_images')
+                        .upload(fileName, imageFile);
+                        
+                    if (uploadError) throw uploadError;
+
+                    const { data: publicUrlData } = supabase.storage
+                        .from('quiz_images')
+                        .getPublicUrl(fileName);
+                        
+                    finalImageUrl = publicUrlData.publicUrl;
                 }
 
-                // 2. Firestore에 저장할 퀴즈 객체 생성 (imageUrl 포함)
                 const newQuiz = {
                     question: qInput,
-                    imageUrl: imageUrl, 
+                    imageUrl: finalImageUrl, 
                     options: [opt1, opt2, opt3, opt4],
                     answer: parseInt(ans)
                 };
 
-                await addDoc(collection(db, "quizzes"), newQuiz);
+                const { error: insertError } = await supabase.from('quizzes').insert([newQuiz]);
+                if (insertError) throw insertError;
+
                 alert("퀴즈가 추가되었습니다!");
                 
-                // 입력칸 초기화
                 document.getElementById("new-question").value = "";
-                document.getElementById("new-image").value = ""; // 파일 입력 초기화
+                document.getElementById("new-image").value = ""; 
                 document.getElementById("new-opt1").value = "";
                 document.getElementById("new-opt2").value = "";
                 document.getElementById("new-opt3").value = "";
