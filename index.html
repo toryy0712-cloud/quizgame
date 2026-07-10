@@ -14,14 +14,16 @@
             background-position: center;
             display: flex; 
             justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
+            align-items: flex-start; /* 중앙 정렬 해제 및 스크롤 여백 생성을 위해 변경 */
+            min-height: 100vh; 
+            height: auto;
             margin: 0; 
             color: white; 
+            overflow-y: auto; /* 세로 스크롤바 허용 */
         }
 
         #admin-btn {
-            position: absolute;
+            position: fixed; /* 스크롤을 내려도 관리자 버튼이 상단에 유지되도록 변경 */
             top: 15px; 
             left: 15px;
             background-color: #34495e;
@@ -45,6 +47,8 @@
             padding: 2.5rem; 
             text-align: center; 
             color: black; 
+            /* 화면 위아래로 여백을 크게 주어 스크롤이 많이 생기도록 설정 */
+            margin: 120px auto 400px auto; 
         }
         h1 { color: #2c3e50; margin-bottom: 1.5rem; }
         
@@ -89,6 +93,15 @@
         #restart:hover { background-color: #27ae60; }
         #loading { font-size: 1.2rem; color: #7f8c8d; font-weight: bold; }
 
+        /* 시작하기 버튼 전용 스타일 */
+        #start-btn {
+            background-color: #f39c12;
+            font-size: 1.2rem;
+            padding: 15px 30px;
+            margin-top: 20px;
+        }
+        #start-btn:hover { background-color: #e67e22; }
+
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
@@ -127,12 +140,16 @@
         .delete-btn:hover { background-color: #c0392b; }
         
         .add-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
-        .add-form input, .add-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .add-form input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
         #new-image { padding: 5px; font-size: 0.9rem; } 
         
         .add-btn { background-color: #2ecc71; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; }
         .add-btn:hover { background-color: #27ae60; }
         .close-admin { background-color: #95a5a6; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        
+        /* 동적 선택지 추가 버튼 스타일 */
+        #add-option-btn { background-color: #9b59b6; margin-bottom: 15px; width: auto; align-self: flex-start; padding: 8px 15px; font-size: 0.9rem; }
+        #add-option-btn:hover { background-color: #8e44ad; }
     </style>
 </head>
 <body>
@@ -142,6 +159,11 @@
     <div class="quiz-container">
         <h1>✨ 산지 퀴즈</h1>
         <div id="loading">퀴즈를 불러오는 중입니다...</div>
+        
+        <div id="start-screen" style="display: none;">
+            <p>준비되셨나요? 아래 버튼을 눌러 퀴즈를 시작하세요!</p>
+            <button id="start-btn" class="btn">산지 퀴즈 시작하기</button>
+        </div>
         
         <div id="quiz" style="display: none;">
             <img id="quiz-image" src="" alt="퀴즈 이미지">
@@ -173,16 +195,10 @@
                 <input type="text" id="new-question" placeholder="질문을 입력하세요">
                 <input type="file" id="new-image" accept="image/*">
                 
-                <input type="text" id="new-opt1" placeholder="선택지 1">
-                <input type="text" id="new-opt2" placeholder="선택지 2">
-                <input type="text" id="new-opt3" placeholder="선택지 3">
-                <input type="text" id="new-opt4" placeholder="선택지 4">
-                <select id="new-answer">
-                    <option value="0">정답: 선택지 1</option>
-                    <option value="1">정답: 선택지 2</option>
-                    <option value="2">정답: 선택지 3</option>
-                    <option value="3">정답: 선택지 4</option>
-                </select>
+                <div style="font-weight: bold; margin-top: 10px;">선택지 (정답인 항목의 동그라미를 체크하세요)</div>
+                <div id="options-wrapper"></div>
+                <button type="button" class="btn" id="add-option-btn">+ 선택지 추가</button>
+                
                 <button class="add-btn" id="add-quiz-btn">새 퀴즈 추가하기</button>
             </div>
             
@@ -193,7 +209,6 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        // 프로젝트 주소 및 퍼블리시어블 키
         const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bnR4anNic3d5aHVtZ253bm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2Nzg0MDksImV4cCI6MjA5OTI1NDQwOX0.dD5xhlttjYwcnD2qdRzQCtQyDDa973A3-JppmNSSGnA';
         
@@ -204,6 +219,8 @@
         let score = 0;
 
         const loadingEl = document.getElementById("loading");
+        const startScreenEl = document.getElementById("start-screen"); // 시작 화면
+        const startBtn = document.getElementById("start-btn"); // 시작 버튼
         const quizDiv = document.getElementById("quiz");
         const quizImageEl = document.getElementById("quiz-image"); 
         const questionEl = document.getElementById("question");
@@ -216,7 +233,11 @@
         const adminModal = document.getElementById("admin-modal");
         const pwInput = document.getElementById("admin-pw");
         const quizListEl = document.getElementById("quiz-list");
+        
         const addQuizBtn = document.getElementById("add-quiz-btn");
+        const optionsWrapper = document.getElementById("options-wrapper");
+        const addOptionBtn = document.getElementById("add-option-btn");
+        let optionCount = 0;
 
         async function fetchQuizzes() {
             quizData = [];
@@ -225,15 +246,19 @@
                 if (error) throw error;
                 
                 quizData = data || [];
-                startQuiz();
+                initStartScreen(); // 퀴즈 로드 후 바로 시작하지 않고 시작화면 띄우기
             } catch (e) {
                 console.error("데이터 로드 실패:", e);
                 loadingEl.innerText = "퀴즈를 불러올 수 없습니다. 오류: " + e.message;
             }
         }
 
-        function startQuiz() {
+        // 시작 화면 초기화 함수
+        function initStartScreen() {
             loadingEl.style.display = "none";
+            quizDiv.style.display = "none";
+            resultEl.style.display = "none";
+            restartBtn.style.display = "none";
             
             if(quizData.length === 0) {
                 quizDiv.style.display = "block";
@@ -242,11 +267,18 @@
                 optionsEl.innerHTML = "";
                 return;
             }
+            
+            startScreenEl.style.display = "block";
+        }
 
+        startBtn.onclick = () => {
+            startScreenEl.style.display = "none";
+            startQuiz();
+        };
+
+        function startQuiz() {
             currentQuestionIndex = 0;
             score = 0;
-            resultEl.style.display = "none";
-            restartBtn.style.display = "none";
             quizDiv.style.display = "block";
             loadQuestion();
         }
@@ -297,7 +329,8 @@
             restartBtn.style.display = "block";
         }
         
-        restartBtn.onclick = startQuiz;
+        // 다시하기 버튼 누르면 시작 화면으로 이동
+        restartBtn.onclick = initStartScreen; 
 
         adminBtn.onclick = () => { pwModal.style.display = "flex"; pwInput.value = ""; };
         document.getElementById("pw-cancel-btn").onclick = () => { pwModal.style.display = "none"; };
@@ -356,16 +389,88 @@
             });
         }
 
+        // --- 관리자: 동적 선택지 추가 로직 ---
+        function createOptionInput() {
+            const div = document.createElement("div");
+            div.style.display = "flex";
+            div.style.alignItems = "center";
+            div.style.gap = "10px";
+            div.style.marginBottom = "8px";
+            
+            // 정답 라디오 버튼
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.name = "correct-answer";
+            radio.value = optionCount;
+            if (optionCount === 0) radio.checked = true; // 첫 번째 기본 선택
+
+            // 선택지 텍스트 입력칸
+            const input = document.createElement("input");
+            input.type = "text";
+            input.placeholder = `선택지 ${optionCount + 1}`;
+            input.className = "opt-input";
+            
+            // 삭제 버튼
+            const delBtn = document.createElement("button");
+            delBtn.innerText = "X";
+            delBtn.style.background = "#e74c3c";
+            delBtn.style.color = "white";
+            delBtn.style.border = "none";
+            delBtn.style.padding = "8px 12px";
+            delBtn.style.cursor = "pointer";
+            delBtn.style.borderRadius = "4px";
+            
+            delBtn.onclick = () => {
+                if (optionsWrapper.children.length > 2) {
+                    optionsWrapper.removeChild(div);
+                    updateRadioValues();
+                } else {
+                    alert("최소 2개의 선택지가 필요합니다.");
+                }
+            };
+
+            div.appendChild(radio);
+            div.appendChild(input);
+            div.appendChild(delBtn);
+            optionsWrapper.appendChild(div);
+            optionCount++;
+            updateRadioValues();
+        }
+
+        // 선택지 삭제/추가 시 번호와 라디오 값 재정렬
+        function updateRadioValues() {
+            const rows = optionsWrapper.children;
+            for(let i=0; i<rows.length; i++) {
+                const radio = rows[i].querySelector("input[type='radio']");
+                radio.value = i;
+                const input = rows[i].querySelector("input[type='text']");
+                input.placeholder = `선택지 ${i + 1}`;
+            }
+            optionCount = rows.length;
+        }
+
+        addOptionBtn.onclick = createOptionInput;
+
+        // 초기 로딩 시 기본 4개의 선택지 생성
+        createOptionInput(); createOptionInput(); createOptionInput(); createOptionInput();
+
         addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
             const imageFile = document.getElementById("new-image").files[0];
-            const opt1 = document.getElementById("new-opt1").value;
-            const opt2 = document.getElementById("new-opt2").value;
-            const opt3 = document.getElementById("new-opt3").value;
-            const opt4 = document.getElementById("new-opt4").value;
-            const ans = document.getElementById("new-answer").value;
+            
+            // 생성된 모든 선택지 가져오기
+            const optInputs = document.querySelectorAll(".opt-input");
+            const options = [];
+            let isValid = true;
+            optInputs.forEach(input => {
+                if(!input.value) isValid = false;
+                options.push(input.value);
+            });
 
-            if(!qInput || !opt1 || !opt2 || !opt3 || !opt4) {
+            // 체크된 정답 라디오 버튼 가져오기
+            const checkedRadio = document.querySelector("input[name='correct-answer']:checked");
+
+            if(!qInput || !isValid || !checkedRadio) {
                 alert("질문과 모든 선택지를 채워주세요!");
                 return;
             }
@@ -396,8 +501,8 @@
                 const newQuiz = {
                     question: qInput,
                     imageUrl: finalImageUrl, 
-                    options: [opt1, opt2, opt3, opt4],
-                    answer: parseInt(ans)
+                    options: options, // 배열로 동적 저장
+                    answer: parseInt(checkedRadio.value)
                 };
 
                 const { error: insertError } = await supabase.from('quizzes').insert([newQuiz]);
@@ -405,13 +510,13 @@
 
                 alert("퀴즈가 추가되었습니다!");
                 
+                // 입력칸 초기화
                 document.getElementById("new-question").value = "";
                 document.getElementById("new-image").value = ""; 
-                document.getElementById("new-opt1").value = "";
-                document.getElementById("new-opt2").value = "";
-                document.getElementById("new-opt3").value = "";
-                document.getElementById("new-opt4").value = "";
-                document.getElementById("new-answer").value = "0";
+                optionsWrapper.innerHTML = "";
+                optionCount = 0;
+                // 다시 기본 4개 생성
+                createOptionInput(); createOptionInput(); createOptionInput(); createOptionInput();
 
                 await fetchQuizzes(); 
                 renderAdminList();
