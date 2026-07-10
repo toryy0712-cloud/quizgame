@@ -8,7 +8,6 @@
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            /* 배경 이미지 변경 */
             background-image: url('mountain-quiz.png');
             background-size: cover;
             background-attachment: fixed;
@@ -21,7 +20,6 @@
             color: white; 
         }
 
-        /* 좌측 상단 관리자 버튼 */
         #admin-btn {
             position: absolute;
             top: 15px; 
@@ -39,7 +37,7 @@
         #admin-btn:hover { background-color: #2c3e50; }
 
         .quiz-container { 
-            background-color: rgba(255, 255, 255, 0.9); 
+            background-color: rgba(255, 255, 255, 0.95); 
             border-radius: 10px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             width: 90%; 
@@ -49,6 +47,17 @@
             color: black; 
         }
         h1 { color: #2c3e50; margin-bottom: 1.5rem; }
+        
+        /* 퀴즈 이미지 스타일 */
+        #quiz-image {
+            max-width: 100%;
+            max-height: 250px;
+            object-fit: contain;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            display: none; /* 기본적으로 숨김 */
+        }
+
         #question { 
             font-size: 1.3rem; 
             font-weight: 600;
@@ -81,7 +90,6 @@
         #restart:hover { background-color: #27ae60; }
         #loading { font-size: 1.2rem; color: #7f8c8d; font-weight: bold; }
 
-        /* 모달 및 관리자 모드 UI */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
@@ -100,7 +108,6 @@
             color: black;
         }
         
-        /* 스크롤바가 적용된 퀴즈 리스트 영역 */
         .quiz-list-container {
             flex-grow: 1;
             overflow-y: auto;
@@ -120,9 +127,11 @@
         .delete-btn { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
         .delete-btn:hover { background-color: #c0392b; }
         
-        /* 퀴즈 추가 폼 */
         .add-form { display: flex; flex-direction: column; gap: 10px; text-align: left; }
         .add-form input, .add-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        /* 파일 입력 필드 스타일 */
+        #new-image { padding: 5px; font-size: 0.9rem; } 
+        
         .add-btn { background-color: #2ecc71; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; font-weight: bold; }
         .add-btn:hover { background-color: #27ae60; }
         .close-admin { background-color: #95a5a6; color: white; border: none; padding: 8px; cursor: pointer; border-radius: 5px; margin-top: 10px; }
@@ -137,6 +146,7 @@
         <div id="loading">퀴즈를 불러오는 중입니다...</div>
         
         <div id="quiz" style="display: none;">
+            <img id="quiz-image" src="" alt="퀴즈 이미지">
             <div id="question">질문이 여기에 표시됩니다.</div>
             <div id="options"></div>
         </div>
@@ -163,6 +173,8 @@
 
             <div class="add-form">
                 <input type="text" id="new-question" placeholder="질문을 입력하세요">
+                <input type="file" id="new-image" accept="image/*">
+                
                 <input type="text" id="new-opt1" placeholder="선택지 1">
                 <input type="text" id="new-opt2" placeholder="선택지 2">
                 <input type="text" id="new-opt3" placeholder="선택지 3">
@@ -183,6 +195,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        // Firebase Storage 임포트 추가
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCgbrP1rbGQWFOYlccfTwaguzIYPs_QvTQ",
@@ -194,10 +208,11 @@
             measurementId: "G-VB6D1N016H"
         };
 
-        let app, db;
+        let app, db, storage;
         try {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
+            storage = getStorage(app); // Storage 초기화
         } catch (e) {
             console.error("Firebase 초기화 에러:", e);
         }
@@ -208,6 +223,7 @@
 
         const loadingEl = document.getElementById("loading");
         const quizDiv = document.getElementById("quiz");
+        const quizImageEl = document.getElementById("quiz-image"); // 이미지 엘리먼트
         const questionEl = document.getElementById("question");
         const optionsEl = document.getElementById("options");
         const resultEl = document.getElementById("result");
@@ -218,6 +234,7 @@
         const adminModal = document.getElementById("admin-modal");
         const pwInput = document.getElementById("admin-pw");
         const quizListEl = document.getElementById("quiz-list");
+        const addQuizBtn = document.getElementById("add-quiz-btn"); // 추가 버튼
 
         async function fetchQuizzes() {
             quizData = [];
@@ -239,6 +256,7 @@
             if(quizData.length === 0) {
                 quizDiv.style.display = "block";
                 questionEl.innerText = "현재 등록된 퀴즈가 없습니다. 관리자 모드에서 추가해주세요.";
+                quizImageEl.style.display = "none";
                 optionsEl.innerHTML = "";
                 return;
             }
@@ -254,8 +272,17 @@
         function loadQuestion() {
             const currentQuiz = quizData[currentQuestionIndex];
             questionEl.innerText = currentQuiz.question;
-            optionsEl.innerHTML = "";
+            
+            // 저장된 이미지 URL이 있으면 표시, 없으면 숨김
+            if (currentQuiz.imageUrl) {
+                quizImageEl.src = currentQuiz.imageUrl;
+                quizImageEl.style.display = "inline-block";
+            } else {
+                quizImageEl.src = "";
+                quizImageEl.style.display = "none";
+            }
 
+            optionsEl.innerHTML = "";
             currentQuiz.options.forEach((option, index) => {
                 const button = document.createElement("button");
                 button.innerText = option;
@@ -314,9 +341,11 @@
             quizData.forEach((q) => {
                 const div = document.createElement("div");
                 div.className = "quiz-item";
+                // 이미지가 포함된 퀴즈인지 아이콘으로 표시
+                const imgIcon = q.imageUrl ? " 🖼️" : "";
                 div.innerHTML = `
                     <div class="quiz-info">
-                        <strong>Q: ${q.question}</strong><br>
+                        <strong>Q: ${q.question}${imgIcon}</strong><br>
                         <span style="font-size: 0.9em; color: #555;">정답: ${q.options[q.answer]}</span>
                     </div>
                     <button class="delete-btn" data-id="${q.id}">삭제</button>
@@ -341,8 +370,9 @@
             });
         }
 
-        document.getElementById("add-quiz-btn").onclick = async () => {
+        addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
+            const imageFile = document.getElementById("new-image").files[0]; // 선택한 파일 가져오기
             const opt1 = document.getElementById("new-opt1").value;
             const opt2 = document.getElementById("new-opt2").value;
             const opt3 = document.getElementById("new-opt3").value;
@@ -350,21 +380,37 @@
             const ans = document.getElementById("new-answer").value;
 
             if(!qInput || !opt1 || !opt2 || !opt3 || !opt4) {
-                alert("모든 입력칸을 채워주세요!");
+                alert("질문과 모든 선택지를 채워주세요!");
                 return;
             }
 
-            const newQuiz = {
-                question: qInput,
-                options: [opt1, opt2, opt3, opt4],
-                answer: parseInt(ans)
-            };
+            addQuizBtn.innerText = "업로드 중...";
+            addQuizBtn.disabled = true;
 
             try {
+                let imageUrl = "";
+                // 1. 이미지가 첨부되었다면 Firebase Storage에 먼저 업로드
+                if (imageFile) {
+                    // 고유한 파일명을 위해 Date.now() 추가
+                    const imageRef = ref(storage, `quiz_images/${Date.now()}_${imageFile.name}`);
+                    const snapshot = await uploadBytes(imageRef, imageFile);
+                    imageUrl = await getDownloadURL(snapshot.ref); // 업로드된 이미지 URL 가져오기
+                }
+
+                // 2. Firestore에 저장할 퀴즈 객체 생성 (imageUrl 포함)
+                const newQuiz = {
+                    question: qInput,
+                    imageUrl: imageUrl, 
+                    options: [opt1, opt2, opt3, opt4],
+                    answer: parseInt(ans)
+                };
+
                 await addDoc(collection(db, "quizzes"), newQuiz);
                 alert("퀴즈가 추가되었습니다!");
                 
+                // 입력칸 초기화
                 document.getElementById("new-question").value = "";
+                document.getElementById("new-image").value = ""; // 파일 입력 초기화
                 document.getElementById("new-opt1").value = "";
                 document.getElementById("new-opt2").value = "";
                 document.getElementById("new-opt3").value = "";
@@ -375,6 +421,9 @@
                 renderAdminList();
             } catch (err) {
                 alert("추가 실패! 원인: " + err.message);
+            } finally {
+                addQuizBtn.innerText = "새 퀴즈 추가하기";
+                addQuizBtn.disabled = false;
             }
         };
 
