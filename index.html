@@ -7,7 +7,6 @@
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            /* 변경 2: 배경 이미지 추가 */
             background-image: url('image_2.png');
             background-size: cover;
             background-attachment: fixed;
@@ -17,49 +16,13 @@
             align-items: center; 
             height: 100vh; 
             margin: 0; 
-            color: white; /* 어두운 배경에 맞게 기본 텍스트 색상을 흰색으로 */
-        }
-        
-        /* 새로운 상단 바 스타일 */
-        .top-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background-color: #2c3e50; /* 어두운 배경 */
-            color: white;
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            box-sizing: border-box;
-            z-index: 1001; /* 퀴즈 컨테이너보다 위에 배치 */
-        }
-        .top-bar-item {
-            margin-right: 15px;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-        }
-        .top-bar-icon {
-            width: 20px; /* 스크린샷과 비슷한 크기 */
-            height: 20px;
-            border-radius: 50%; /* 원형 프레임 */
-            overflow: hidden; /* 원형 프레임 외부 잘라내기 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-right: 8px;
-        }
-        .top-bar-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* 이미지가 원형 프레임에 꽉 차게 */
+            color: white; 
         }
 
-        /* 좌측 상단 관리자 버튼 (상단 바 아래로 이동) */
+        /* 좌측 상단 관리자 버튼 */
         #admin-btn {
             position: absolute;
-            top: 55px; /* 상단 바 아래에 위치 */
+            top: 15px; 
             left: 15px;
             background-color: #34495e;
             color: white;
@@ -74,15 +37,14 @@
         #admin-btn:hover { background-color: #2c3e50; }
 
         .quiz-container { 
-            background-color: rgba(255, 255, 255, 0.9); /* 약간 투명한 흰색 */
+            background-color: rgba(255, 255, 255, 0.9); 
             border-radius: 10px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             width: 90%; 
             max-width: 600px; 
             padding: 2.5rem; 
             text-align: center; 
-            color: black; /* 퀴즈 내부 텍스트는 검은색으로 유지 */
-            margin-top: 80px; /* 상단 바와 관리자 버튼 아래에 위치 */
+            color: black; 
         }
         h1 { color: #2c3e50; margin-bottom: 1.5rem; }
         #question { 
@@ -122,7 +84,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
             display: none; justify-content: center; align-items: center;
-            z-index: 1002; /* 가장 위에 */
+            z-index: 1002; 
         }
         .modal-content {
             background: white; padding: 2rem; border-radius: 10px;
@@ -165,14 +127,6 @@
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <div class="top-bar-item">
-            <div class="top-bar-icon">
-                <img src="image_1.png" alt="동그라미">
-            </div>
-            <span>시현이의 퀴즈 사이트0</span>
-        </div>
-    </div>
 
     <button id="admin-btn">⚙️ 관리자</button>
 
@@ -228,7 +182,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 시현이가 발급받은 실제 Firebase 설정 정보 적용
         const firebaseConfig = {
             apiKey: "AIzaSyCgbrP1rbGQWFOYlccfTwaguzIYPs_QvTQ",
             authDomain: "quizgame-7a7ef.firebaseapp.com",
@@ -251,7 +204,6 @@
         let currentQuestionIndex = 0;
         let score = 0;
 
-        // DOM 요소들
         const loadingEl = document.getElementById("loading");
         const quizDiv = document.getElementById("quiz");
         const questionEl = document.getElementById("question");
@@ -265,7 +217,6 @@
         const pwInput = document.getElementById("admin-pw");
         const quizListEl = document.getElementById("quiz-list");
 
-        // --- Firestore에서 퀴즈 가져오기 ---
         async function fetchQuizzes() {
             quizData = [];
             try {
@@ -280,7 +231,6 @@
             }
         }
 
-        // --- 메인 퀴즈 로직 ---
         function startQuiz() {
             loadingEl.style.display = "none";
             
@@ -335,7 +285,6 @@
         
         restartBtn.onclick = startQuiz;
 
-        // --- 관리자 모드 로직 ---
         adminBtn.onclick = () => { pwModal.style.display = "flex"; pwInput.value = ""; };
         document.getElementById("pw-cancel-btn").onclick = () => { pwModal.style.display = "none"; };
 
@@ -351,7 +300,7 @@
 
         document.getElementById("close-admin-btn").onclick = () => {
             adminModal.style.display = "none";
-            fetchQuizzes(); // 닫을 때 변경사항 반영해서 퀴즈 재시작
+            fetchQuizzes(); 
         };
 
         function renderAdminList() {
@@ -413,7 +362,6 @@
                 await addDoc(collection(db, "quizzes"), newQuiz);
                 alert("퀴즈가 추가되었습니다!");
                 
-                // 입력칸 초기화
                 document.getElementById("new-question").value = "";
                 document.getElementById("new-opt1").value = "";
                 document.getElementById("new-opt2").value = "";
@@ -428,7 +376,6 @@
             }
         };
 
-        // 앱 시작 시 데이터 로드
         fetchQuizzes();
     </script>
 </body>
