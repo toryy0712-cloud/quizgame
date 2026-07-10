@@ -115,30 +115,39 @@
         #start-btn:hover { background-color: #e67e22; }
         #start-screen p { font-size: 1.3rem; color: #555; }
 
+        /* 수정된 모달 레이아웃: 어두운 배경 자체가 스크롤되도록 설정 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
-            display: none; justify-content: center; align-items: center;
+            display: none; 
+            flex-direction: column; /* 세로 정렬 */
+            align-items: center; /* 가로 중앙 정렬 */
+            overflow-y: auto; /* 배경 스크롤 허용 */
             z-index: 1002; 
+            padding: 3rem 0; /* 위아래 여백을 주어 버튼이 화면 끝에 붙지 않게 함 */
+            box-sizing: border-box;
         }
+
         .modal-content {
             background: white; padding: 2.5rem; border-radius: 10px;
             width: 90%; max-width: 500px; text-align: center;
             color: black;
+            margin: auto; /* 화면이 넓을 땐 수직 중앙, 좁을 땐 자연스럽게 배치 */
+            flex-shrink: 0;
         }
+
         .admin-panel {
             background: white; padding: 2rem; border-radius: 10px;
             width: 90%; max-width: 800px; 
-            max-height: 90vh; 
             display: flex; flex-direction: column;
             color: black;
-            /* 관리자 모드 전체에 스크롤바 추가 */
-            overflow-y: auto; 
+            margin: auto; 
+            flex-shrink: 0; /* 창 크기가 작아도 패널이 찌그러지지 않게 보호 */
         }
         
         .quiz-list-container {
-            flex-grow: 1;
-            /* 내부 스크롤 유지, 공간이 좁아지면 목록에서만 스크롤 가능 */
+            max-height: 250px; /* 기존 목록 창은 너무 길어지지 않게 고정 */
+            flex-shrink: 0;
             overflow-y: auto; 
             border: 1px solid #ddd;
             border-radius: 5px;
@@ -356,8 +365,17 @@
         
         restartBtn.onclick = initStartScreen; 
 
-        adminBtn.onclick = () => { pwModal.style.display = "flex"; pwInput.value = ""; };
-        document.getElementById("pw-cancel-btn").onclick = () => { pwModal.style.display = "none"; };
+        // 관리자 인증창 띄울 때 배경 멈춤
+        adminBtn.onclick = () => { 
+            pwModal.style.display = "flex"; 
+            pwInput.value = ""; 
+            document.body.style.overflow = "hidden"; // 메인 배경 스크롤 차단
+        };
+        
+        document.getElementById("pw-cancel-btn").onclick = () => { 
+            pwModal.style.display = "none"; 
+            document.body.style.overflow = "auto"; // 메인 배경 스크롤 복구
+        };
 
         document.getElementById("pw-submit-btn").onclick = () => {
             if (pwInput.value === "050126") {
@@ -369,8 +387,10 @@
             }
         };
 
+        // 관리자 모드 닫을 때 배경 움직임 복구
         document.getElementById("close-admin-btn").onclick = () => {
             adminModal.style.display = "none";
+            document.body.style.overflow = "auto"; // 메인 배경 스크롤 복구
             fetchQuizzes(); 
         };
 
