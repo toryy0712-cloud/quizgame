@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     <link rel="icon" href="mountain-quiz.png">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="apple-touch-icon" href="mountain-quiz.png">
+
     <style>
-        /* 1. 전체 기본 글자 크기 증가 */
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             font-size: 1.1rem; 
@@ -24,7 +28,6 @@
             overflow-y: auto; 
         }
 
-        /* 버튼 등 전반적인 요소 글자 크기 확대 */
         #admin-btn {
             position: fixed; 
             top: 15px; 
@@ -70,14 +73,12 @@
             margin-bottom: 30px; 
         }
 
-        /* 문제 풀 때 선택지가 너무 많으면 흰 상자 안에서 스크롤 생성 */
         #options {
             max-height: 400px; 
             overflow-y: auto;
             padding-right: 10px;
         }
 
-        /* 퀴즈 버튼 크기 확대 */
         .btn { 
             background-color: #3498db; 
             color: white; 
@@ -114,7 +115,6 @@
         #start-btn:hover { background-color: #e67e22; }
         #start-screen p { font-size: 1.3rem; color: #555; }
 
-        /* 모달 및 관리자 모드 UI */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6);
@@ -129,7 +129,7 @@
         .admin-panel {
             background: white; padding: 2rem; border-radius: 10px;
             width: 90%; max-width: 800px; 
-            max-height: 90vh; /* 고정 높이 해제, 최대 90vh까지 길어짐 */
+            max-height: 90vh; 
             display: flex; flex-direction: column;
             color: black;
         }
@@ -158,9 +158,8 @@
         .add-form input[type="text"] { padding: 12px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 1.1rem; }
         #new-image { padding: 5px; font-size: 1rem; } 
         
-        /* 2. 관리자 모드 선택지 입력칸 스크롤 처리 (흰 상자 뚫는 현상 방지) */
         #options-wrapper {
-            max-height: 220px; /* 이 높이를 넘어가면 스크롤 발생 */
+            max-height: 220px; 
             overflow-y: auto;
             padding: 10px;
             border: 1px solid #ddd;
@@ -220,7 +219,6 @@
                 <input type="file" id="new-image" accept="image/*">
                 
                 <div style="font-weight: bold; margin-top: 10px; font-size: 1.1rem;">선택지 (정답인 항목의 동그라미를 체크하세요)</div>
-                <!-- 선택지가 많아지면 스크롤이 생기는 구역 -->
                 <div id="options-wrapper"></div>
                 <button type="button" class="btn" id="add-option-btn">+ 선택지 추가</button>
                 
@@ -541,6 +539,19 @@
                 addQuizBtn.disabled = false;
             }
         };
+
+        // PWA 서비스 워커 등록 스크립트 추가
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker 등록 성공:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker 등록 실패:', error);
+                    });
+            });
+        }
 
         fetchQuizzes();
     </script>
