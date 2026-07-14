@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=7">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=7">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=7">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=7">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=8">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=8">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=8">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=8">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=7">
+    <link rel="manifest" href="manifest.json?v=8">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -379,6 +379,33 @@
             height: 20px;
             cursor: pointer;
         }
+
+        /* 📥 대량 등록 섹션 스타일 */
+        .bulk-add-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px dashed #ccc;
+            text-align: left;
+        }
+        .bulk-textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: monospace;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .bulk-info-box {
+            background: #eaf2f8;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            color: #2c3e50;
+            border-left: 4px solid #3498db;
+        }
     </style>
 </head>
 <body>
@@ -483,7 +510,21 @@
                 </div>
             </div>
 
-            <button class="add-btn" id="add-quiz-btn">새 퀴즈 추가하기</button>
+            <button class="add-btn" id="add-quiz-btn">새 퀴즈 단건 추가하기</button>
+            
+            <div class="bulk-add-section">
+                <h3 style="color:#2c3e50; margin-bottom: 10px;">📥 엑셀 데이터 1초 만에 대량 등록 (복붙)</h3>
+                <div class="bulk-info-box">
+                    <strong>[엑셀 작성 열 순서 가이드]</strong><br>
+                    A열: 질문 (필수)<br>
+                    B열: <strong>정답</strong> (필수) - ※ 게임할 때 선택지 위치는 자동으로 마구 섞입니다.<br>
+                    C열: 오답1 (필수) / D열: 오답2 (필수) / E열: 오답3 (필수)<br>
+                    F열: 힌트 (선택사항 - 안 쓰면 빈칸) / G열: 초 (선택사항 - 빈칸 시 15초)
+                </div>
+                <textarea id="bulk-input" class="bulk-textarea" placeholder="엑셀에서 복사(Ctrl+C)한 뒤 여기에 바로 붙여넣기(Ctrl+V) 하세요!"></textarea>
+                <button id="bulk-submit-btn" class="btn" style="background-color:#34495e; margin-top:10px; font-weight:bold;">대량 등록 실행하기</button>
+            </div>
+
             <button class="close-admin" id="close-admin-btn">닫기</button>
         </div>
     </div>
@@ -497,7 +538,7 @@
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let allQuizzes = []; 
-        let hiddenQuizzes = []; // 🚪 히든 스테이지 분리 저장
+        let hiddenQuizzes = []; 
         let currentPlayQueue = []; 
         let currentQuestionIndex = 0;
         let score = 0; 
@@ -555,9 +596,7 @@
                 const { data, error } = await supabase.from('quizzes').select('*');
                 if (error) throw error;
                 
-                // 💡 안전 장치: 데이터가 비어있어도 코드가 터지지 않도록 방어
                 const safeData = data || [];
-                
                 allQuizzes = safeData.filter(q => !q.is_hidden);
                 hiddenQuizzes = safeData.filter(q => q.is_hidden);
                 
@@ -638,9 +677,11 @@
             document.getElementById("mountain-track").style.display = "block";
             document.getElementById("dynamic-timer-container").style.display = "block";
             
-            currentPlayQueue = JSON.parse(JSON.stringify(allQuizzes));
-            shuffleArray(currentPlayQueue);
-
+            // 🎲 100개가 있든 1000개가 있든 섞어서 딱 10개만 추출!
+            let tempQueue = JSON.parse(JSON.stringify(allQuizzes));
+            shuffleArray(tempQueue);
+            currentPlayQueue = tempQueue.slice(0, 10); 
+            
             loadQuestion();
         }
 
@@ -1046,7 +1087,7 @@
             createOptionInput(); createOptionInput(); createOptionInput(); createOptionInput();
 
             editModeIndicator.style.display = "none";
-            addQuizBtn.innerText = "새 퀴즈 추가하기";
+            addQuizBtn.innerText = "새 퀴즈 단건 추가하기";
             addQuizBtn.style.backgroundColor = "#2ecc71"; 
             addQuizBtn.disabled = false;
             
@@ -1121,6 +1162,75 @@
 
         document.getElementById("add-option-btn").onclick = () => createOptionInput();
 
+        // 📥 대량 등록(엑셀 복붙) 처리 로직
+        document.getElementById("bulk-submit-btn").onclick = async () => {
+            const text = document.getElementById("bulk-input").value;
+            if (!text.trim()) {
+                alert("엑셀 데이터를 먼저 붙여넣어 주세요!");
+                return;
+            }
+
+            const lines = text.trim().split('\n');
+            const bulkData = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const cols = lines[i].split('\t');
+                if (cols.length < 4) continue; // 데이터가 부족한 줄 무시 (질문 + 정답 + 오답1, 2)
+                
+                const q = cols[0].trim();
+                const correctOpt = cols[1].trim();
+                const wrong1 = cols[2].trim();
+                const wrong2 = cols[3].trim();
+                const wrong3 = cols[4] ? cols[4].trim() : "";
+                const h = cols[5] ? cols[5].trim() : "";
+                let t = parseInt(cols[6]);
+                if (isNaN(t) || t <= 0) t = 15;
+
+                if(!q || !correctOpt) continue;
+                
+                // 오답이 3개 미만이라도 유효한 것만 배열에 넣기
+                const optArray = [correctOpt];
+                if(wrong1) optArray.push(wrong1);
+                if(wrong2) optArray.push(wrong2);
+                if(wrong3) optArray.push(wrong3);
+
+                bulkData.push({
+                    question: q,
+                    hint: h,
+                    timer: t,
+                    is_hidden: false, // 대량 등록은 기본적으로 일반 문제
+                    imageUrl: "", 
+                    options: optArray,
+                    answer: [0] // 정답을 0번으로 고정 (플레이 시 자동으로 섞임)
+                });
+            }
+            
+            if (bulkData.length === 0) {
+                alert("유효한 데이터가 없습니다. 엑셀 열 순서(질문, 정답, 오답...)를 확인해주세요.");
+                return;
+            }
+
+            const btn = document.getElementById("bulk-submit-btn");
+            btn.innerText = "데이터 등록 중...";
+            btn.disabled = true;
+
+            try {
+                const { error } = await supabase.from('quizzes').insert(bulkData);
+                if (error) throw error;
+                
+                alert(`${bulkData.length}개의 퀴즈가 성공적으로 대량 등록되었습니다!`);
+                document.getElementById("bulk-input").value = "";
+                await fetchQuizzes();
+                renderAdminList();
+            } catch (err) {
+                alert("대량 추가 실패! 원인: " + err.message);
+            } finally {
+                btn.innerText = "대량 등록 실행하기";
+                btn.disabled = false;
+            }
+        };
+
+        // 기존 단건 추가 로직
         addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
             const hInput = document.getElementById("new-hint").value; 
@@ -1199,14 +1309,14 @@
                 renderAdminList();
             } catch (err) {
                 alert("처리 실패! 원인: " + err.message);
-                addQuizBtn.innerText = editingQuizId ? "수정 완료" : "새 퀴즈 추가하기";
+                addQuizBtn.innerText = editingQuizId ? "수정 완료" : "새 퀴즈 단건 추가하기";
                 addQuizBtn.disabled = false;
             }
         };
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=7') 
+                navigator.serviceWorker.register('sw.js?v=8') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
