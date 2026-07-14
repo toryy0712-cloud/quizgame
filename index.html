@@ -5,15 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <!-- 아이콘 관련 설정 (캐시 회피용 쿼리 추가) -->
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=2">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=2">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=2">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=2">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=4">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=4">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=4">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=4">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <!-- 매니페스트 파일 캐시 회피 -->
-    <link rel="manifest" href="manifest.json?v=2">
+    <link rel="manifest" href="manifest.json?v=4">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -53,6 +51,7 @@
         #admin-btn:hover { background-color: #2c3e50; }
 
         .quiz-container { 
+            position: relative;
             background-color: rgba(255, 255, 255, 0.95); 
             border-radius: 10px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
@@ -65,7 +64,6 @@
         }
         h1 { color: #2c3e50; margin-bottom: 1.5rem; font-size: 2.2rem; }
         
-        /* 🚀 상태바 및 타이머 UI 스타일 */
         #quiz-header {
             display: flex;
             justify-content: space-between;
@@ -81,24 +79,60 @@
             letter-spacing: 2px;
         }
 
-        #progress-container {
+        /* 🧗‍♂️ 등산 테마 진척도 스타일 */
+        #mountain-track {
+            position: relative;
             width: 100%;
-            background-color: #ecf0f1;
-            border-radius: 10px;
-            height: 12px;
+            height: 35px;
+            background: linear-gradient(to right, #d5dbdb, #aed6f1);
+            border-radius: 20px;
             margin-bottom: 25px;
-            overflow: hidden;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
         }
-        #progress-bar {
-            height: 100%;
-            background-color: #2ecc71;
-            width: 0%;
-            transition: width 0.4s ease;
+        #climber {
+            position: absolute;
+            left: 0%;
+            top: -2px;
+            font-size: 1.6rem;
+            transition: left 0.5s ease-in-out;
+            z-index: 2;
         }
+        #flag {
+            position: absolute;
+            right: 10px;
+            top: 2px;
+            font-size: 1.3rem;
+            opacity: 0.8;
+        }
+
         .timer-text {
             color: #e74c3c;
             font-weight: bold;
+        }
+
+        /* 🔥 콤보 애니메이션 스타일 */
+        #combo-display {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: 900;
+            color: #ff9f43;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            white-space: nowrap;
+        }
+        .combo-animate {
+            animation: popCombo 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popCombo {
+            0% { opacity: 0; transform: translate(-50%, -10%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
         }
 
         #quiz-image {
@@ -114,7 +148,44 @@
             font-size: 1.6rem; 
             font-weight: 600;
             color: #34495e;
-            margin-bottom: 30px; 
+            margin-bottom: 15px; 
+        }
+
+        /* 💡 힌트 스타일 */
+        #hint-container {
+            margin-bottom: 25px;
+            min-height: 30px;
+        }
+        #hint-btn {
+            background-color: #f1c40f;
+            color: #333;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #hint-btn:hover:not(:disabled) { transform: scale(1.05); }
+        #hint-btn:disabled {
+            background-color: #bdc3c7;
+            color: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #hint-text {
+            display: none;
+            background: #fef9e7;
+            border-left: 4px solid #f1c40f;
+            padding: 10px 15px;
+            border-radius: 5px;
+            color: #7d6608;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 10px;
         }
 
         #options {
@@ -144,7 +215,6 @@
             transform: scale(0.98);
         }
         
-        /* 🚀 결과 화면 스타일 */
         #result { 
             font-size: 1.8rem; 
             font-weight: bold; 
@@ -267,6 +337,8 @@
     <button id="admin-btn">⚙️ 관리자</button>
 
     <div class="quiz-container">
+        <div id="combo-display"></div>
+
         <h1>✨ 산지 퀴즈</h1>
         <div id="loading">퀴즈를 불러오는 중입니다...</div>
         
@@ -278,15 +350,23 @@
         <div id="quiz" style="display: none;">
             <div id="quiz-header">
                 <span id="question-counter">문제 1 / 10</span>
-                <span id="lives-display">❤️❤️❤️</span> <!-- 하트 표시 영역 추가 -->
-                <span id="timer-display" class="timer-text">⏳ 15초</span> <!-- 15초로 변경 -->
+                <span id="lives-display">❤️❤️❤️</span>
+                <span id="timer-display" class="timer-text">⏳ 15초</span>
             </div>
-            <div id="progress-container">
-                <div id="progress-bar"></div>
+            
+            <div id="mountain-track">
+                <div id="climber">🧗‍♂️</div>
+                <div id="flag">🚩</div>
             </div>
 
             <img id="quiz-image" src="" alt="퀴즈 이미지">
             <div id="question">질문이 여기에 표시됩니다.</div>
+            
+            <div id="hint-container">
+                <button id="hint-btn" style="display: none;">💡 힌트 보기</button>
+                <div id="hint-text"></div>
+            </div>
+
             <div id="options"></div>
             
             <button id="submit-answer-btn" class="btn" style="background-color: #9b59b6; margin-top: 20px; display: none; font-weight: bold;">정답 제출하기</button>
@@ -309,8 +389,7 @@
         <div class="admin-panel">
             <h2>🛠️ 관리자 모드</h2>
             
-            <div class="quiz-list-container" id="quiz-list">
-                </div>
+            <div class="quiz-list-container" id="quiz-list"></div>
 
             <div class="add-form">
                 <div id="edit-mode-indicator" style="display: none;">
@@ -319,6 +398,9 @@
                 </div>
 
                 <input type="text" id="new-question" placeholder="질문을 입력하세요">
+                
+                <input type="text" id="new-hint" placeholder="💡 힌트를 입력하세요 (선택 사항)">
+                
                 <input type="file" id="new-image" accept="image/*">
                 <small style="color: #666; margin-top: -8px;">(※ 이미지를 새로 올리지 않으면 기존 이미지가 유지됩니다.)</small>
                 
@@ -346,12 +428,16 @@
         let currentQuestionIndex = 0;
         let score = 0; 
         
-        // 🚀 하트 시스템 관련 변수 추가
+        // 🚀 하트 변수
         const maxLives = 3;
         let currentLives = 3;
         
+        // 🔥 콤보 및 💡 힌트 변수
+        let currentCombo = 0;
+        let hintsRemaining = 2;
+        
         let timerInterval;
-        let timeLeft = 15; // 🚀 타이머 기본값을 15초로 변경
+        let timeLeft = 15;
 
         let editingQuizId = null;
         let existingImageUrl = "";
@@ -407,7 +493,6 @@
         function initStartScreen() {
             loadingEl.style.display = "none";
             quizDiv.style.display = "none";
-            
             resultEl.style.display = "none";
             restartBtn.style.display = "none";
             
@@ -418,10 +503,10 @@
                 optionsEl.innerHTML = "";
                 submitAnswerBtn.style.display = "none";
                 document.getElementById("quiz-header").style.display = "none";
-                document.getElementById("progress-container").style.display = "none";
+                document.getElementById("mountain-track").style.display = "none";
+                document.getElementById("hint-container").style.display = "none";
                 return;
             }
-            
             startScreenEl.style.display = "block";
         }
 
@@ -430,28 +515,39 @@
             startQuiz();
         };
 
-        // 🚀 하트 화면 업데이트 함수
         function updateLivesDisplay() {
             let hearts = "";
             for(let i = 0; i < maxLives; i++) {
-                if (i < currentLives) {
-                    hearts += "❤️";
-                } else {
-                    hearts += "💔";
-                }
+                if (i < currentLives) { hearts += "❤️"; } 
+                else { hearts += "💔"; }
             }
             document.getElementById("lives-display").innerText = hearts;
+        }
+
+        // 🔥 콤보 애니메이션 실행 함수
+        function triggerComboAnimation() {
+            if (currentCombo >= 2) {
+                const comboEl = document.getElementById("combo-display");
+                comboEl.innerText = `${currentCombo} COMBO! 🔥`;
+                // 애니메이션 재시작을 위한 트릭 (클래스 제거 후 다시 추가)
+                comboEl.classList.remove("combo-animate");
+                void comboEl.offsetWidth; 
+                comboEl.classList.add("combo-animate");
+            }
         }
 
         function startQuiz() {
             currentQuestionIndex = 0;
             score = 0; 
-            currentLives = maxLives; // 🚀 퀴즈 시작 시 하트 충전
+            currentLives = maxLives;
+            currentCombo = 0;
+            hintsRemaining = 2; // 게임 시작 시 힌트 2개로 초기화
+            
             updateLivesDisplay();
             
             quizDiv.style.display = "block";
             document.getElementById("quiz-header").style.display = "flex";
-            document.getElementById("progress-container").style.display = "block";
+            document.getElementById("mountain-track").style.display = "block";
             
             currentPlayQueue = JSON.parse(JSON.stringify(allQuizzes));
             shuffleArray(currentPlayQueue);
@@ -461,7 +557,7 @@
 
         function startTimer() {
             clearInterval(timerInterval);
-            timeLeft = 15; // 🚀 다음 문제로 넘어갈 때도 15초로 초기화되게 변경
+            timeLeft = 15; 
             document.getElementById("timer-display").innerText = `⏳ ${timeLeft}초`;
             
             timerInterval = setInterval(() => {
@@ -475,16 +571,16 @@
             }, 1000);
         }
 
-        // 🚀 시간 초과 시 하트 감소 처리
         function handleTimeOut() {
             disableQuizUI();
             currentLives--;
+            currentCombo = 0; // 시간 초과 시 콤보 초기화
             updateLivesDisplay();
 
             if (currentLives <= 0) {
                 setTimeout(showGameOver, 500);
             } else {
-                setTimeout(goToNextQuestion, 500); // 0.5초 뒤 다음 문제로 이동
+                setTimeout(goToNextQuestion, 500);
             }
         }
 
@@ -493,13 +589,16 @@
             document.querySelectorAll(".quiz-option").forEach(btn => {
                 btn.style.pointerEvents = "none";
             });
+            document.getElementById("hint-btn").disabled = true;
         }
 
         function loadQuestion() {
             submitAnswerBtn.disabled = false;
             
-            const progressPercent = (currentQuestionIndex / currentPlayQueue.length) * 100;
-            document.getElementById("progress-bar").style.width = progressPercent + "%";
+            // 🧗‍♂️ 등산 진척도 업데이트 (틀려도 앞으로 전진)
+            const progressPercent = (currentQuestionIndex / currentPlayQueue.length) * 90; // 깃발 피해서 90%까지만
+            document.getElementById("climber").style.left = progressPercent + "%";
+            
             document.getElementById("question-counter").innerText = `문제 ${currentQuestionIndex + 1} / ${currentPlayQueue.length}`;
 
             startTimer();
@@ -515,13 +614,34 @@
                 quizImageEl.style.display = "none";
             }
 
-            let correctAnswersArray = Array.isArray(currentQuiz.answer) ? currentQuiz.answer : [currentQuiz.answer];
+            // 💡 힌트 UI 처리
+            const hintBtn = document.getElementById("hint-btn");
+            const hintTextEl = document.getElementById("hint-text");
+            hintTextEl.style.display = "none"; // 문제 바뀔 때 힌트 닫기
 
+            if (currentQuiz.hint && currentQuiz.hint.trim() !== "") {
+                hintBtn.style.display = "inline-block";
+                hintBtn.innerText = `💡 힌트 보기 (남은 횟수: ${hintsRemaining})`;
+                hintBtn.disabled = hintsRemaining <= 0; // 남은 횟수가 없으면 비활성화
+                
+                hintBtn.onclick = () => {
+                    if (hintsRemaining > 0) {
+                        hintsRemaining--;
+                        hintTextEl.innerText = currentQuiz.hint;
+                        hintTextEl.style.display = "block";
+                        hintBtn.innerText = `💡 힌트 보기 (남은 횟수: ${hintsRemaining})`;
+                        hintBtn.disabled = true; // 현재 문제에서는 더 이상 못 누르게 함
+                    }
+                };
+            } else {
+                hintBtn.style.display = "none";
+            }
+
+            let correctAnswersArray = Array.isArray(currentQuiz.answer) ? currentQuiz.answer : [currentQuiz.answer];
             let optionsWithAnswer = currentQuiz.options.map((opt, idx) => ({
                 text: opt,
                 isCorrect: correctAnswersArray.includes(idx)
             }));
-
             shuffleArray(optionsWithAnswer);
 
             optionsEl.innerHTML = "";
@@ -540,7 +660,6 @@
             submitAnswerBtn.style.display = "block";
         }
 
-        // 🚀 제출 시 오답이면 하트 감소 처리
         submitAnswerBtn.onclick = () => {
             const allOptions = document.querySelectorAll(".quiz-option");
             let hasSelection = false;
@@ -565,11 +684,13 @@
             }
 
             clearInterval(timerInterval);
-
             const isFullyCorrect = (selectedWrongCount === 0 && selectedCorrectCount === correctOptionsCount);
 
             if (isFullyCorrect) {
                 score++; 
+                currentCombo++; // 🔥 정답 시 콤보 증가
+                triggerComboAnimation();
+                
                 disableQuizUI();
                 
                 confetti({
@@ -582,11 +703,12 @@
                 setTimeout(goToNextQuestion, 1500);
             } else {
                 disableQuizUI();
-                currentLives--; // 하트 감소
+                currentLives--; 
+                currentCombo = 0; // 🔥 오답 시 콤보 초기화
                 updateLivesDisplay();
 
                 if (currentLives <= 0) {
-                    setTimeout(showGameOver, 500); // 0.5초 뒤 게임 오버 화면 띄우기
+                    setTimeout(showGameOver, 500); 
                 } else {
                     setTimeout(goToNextQuestion, 500);
                 }
@@ -598,11 +720,12 @@
             if (currentQuestionIndex < currentPlayQueue.length) {
                 loadQuestion();
             } else {
-                showResult(); 
+                // 게임 클리어 시 깃발 위치로 이동
+                document.getElementById("climber").style.left = "90%";
+                setTimeout(showResult, 500); 
             }
         }
         
-        // 🚀 하트 0개 시 게임 오버 처리
         function showGameOver() {
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
@@ -610,11 +733,10 @@
             restartBtn.style.display = "block";
         }
 
-        // 🚀 끝까지 완료했을 때 결과 처리
         function showResult() {
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
-            resultEl.innerHTML = `🎉 클리어! 수고하셨습니다.<br>총 ${currentPlayQueue.length}문제 중 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
+            resultEl.innerHTML = `🎉 🧗‍♂️ 등반 완료! 수고하셨습니다.<br>총 ${currentPlayQueue.length}문제 중 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
             restartBtn.style.display = "block";
         }
         
@@ -660,13 +782,14 @@
                 const div = document.createElement("div");
                 div.className = "quiz-item";
                 const imgIcon = (q.imageUrl && q.imageUrl.trim() !== "") ? " 🖼️" : "";
+                const hintIcon = (q.hint && q.hint.trim() !== "") ? " 💡" : "";
                 
                 let correctAnsArr = Array.isArray(q.answer) ? q.answer : [q.answer];
                 let answerTexts = correctAnsArr.map(idx => q.options[idx]).join(", ");
                 
                 div.innerHTML = `
                     <div class="quiz-info">
-                        <strong>Q: ${q.question}${imgIcon}</strong><br>
+                        <strong>Q: ${q.question}${imgIcon}${hintIcon}</strong><br>
                         <span style="font-size: 1rem; color: #555;">정답: ${answerTexts}</span>
                     </div>
                     <div class="action-btns">
@@ -681,9 +804,7 @@
                 btn.onclick = (e) => {
                     const id = e.target.getAttribute("data-id");
                     const targetQuiz = allQuizzes.find(quiz => quiz.id == id);
-                    if (targetQuiz) {
-                        enableEditMode(targetQuiz);
-                    }
+                    if (targetQuiz) enableEditMode(targetQuiz);
                 };
             });
 
@@ -694,11 +815,8 @@
                         try {
                             const { error } = await supabase.from('quizzes').delete().eq('id', id);
                             if (error) throw error;
-                            
                             alert("삭제되었습니다.");
-                            
                             if (editingQuizId == id) resetForm();
-
                             await fetchQuizzes(); 
                             renderAdminList();
                         } catch (err) {
@@ -714,6 +832,7 @@
             existingImageUrl = quiz.imageUrl || "";
 
             document.getElementById("new-question").value = quiz.question;
+            document.getElementById("new-hint").value = quiz.hint || ""; // 힌트 불러오기
             document.getElementById("new-image").value = ""; 
 
             optionsWrapper.innerHTML = "";
@@ -739,6 +858,7 @@
             editingQuizId = null;
             existingImageUrl = "";
             document.getElementById("new-question").value = "";
+            document.getElementById("new-hint").value = ""; 
             document.getElementById("new-image").value = ""; 
             
             optionsWrapper.innerHTML = "";
@@ -819,6 +939,7 @@
 
         addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
+            const hInput = document.getElementById("new-hint").value; // 💡 힌트 데이터 가져오기
             const imageFile = document.getElementById("new-image").files[0];
             
             const optInputs = document.querySelectorAll(".opt-input");
@@ -862,6 +983,7 @@
 
                 const quizData = {
                     question: qInput,
+                    hint: hInput, // 💡 데이터베이스에 힌트 추가
                     imageUrl: finalImageUrl, 
                     options: options, 
                     answer: answerArray 
@@ -894,7 +1016,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=2') 
+                navigator.serviceWorker.register('sw.js?v=4') 
                     .then(registration => {
                         console.log('ServiceWorker 등록 성공:', registration.scope);
                     })
