@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=10">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=10">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=10">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=10">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=11">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=11">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=11">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=11">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=10">
+    <link rel="manifest" href="manifest.json?v=11">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -976,26 +976,31 @@
             document.body.style.overflow = "auto"; 
         };
 
-        // 🔒 비밀번호 단방향 암호화(해싱) 함수
-        // F12 개발자 도구로 코드를 뜯어봐도 비밀번호 원본을 알 수 없게 만듭니다.
-        function hashPassword(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                hash |= 0; 
-            }
-            return hash;
-        }
+        // 🔒 솔루션 2: Supabase 서버 사이드 보안 검증 적용
+        document.getElementById("pw-submit-btn").onclick = async () => {
+            const enteredPw = pwInput.value;
+            const btn = document.getElementById("pw-submit-btn");
+            btn.innerText = "확인 중...";
+            btn.disabled = true;
 
-        document.getElementById("pw-submit-btn").onclick = () => {
-          
-            if (hashPassword(pwInput.value) === 1424624522) {
-                pwModal.style.display = "none";
-                adminModal.style.display = "flex";
-                resetForm(); 
-                renderAdminList();
-            } else {
-                alert("비밀번호가 틀렸습니다.");
+            try {
+                // F12에 비밀번호를 남기지 않고 오직 Supabase에 물어보기만 합니다.
+                const { data, error } = await supabase.rpc('check_admin_pw', { input_pw: enteredPw });
+                if (error) throw error;
+
+                if (data === true) {
+                    pwModal.style.display = "none";
+                    adminModal.style.display = "flex";
+                    resetForm(); 
+                    renderAdminList();
+                } else {
+                    alert("비밀번호가 틀렸습니다.");
+                }
+            } catch (err) {
+                alert("서버 통신 오류: " + err.message + "\n(※ Supabase SQL Editor에서 check_admin_pw 함수를 생성했는지 확인해주세요!)");
+            } finally {
+                btn.innerText = "확인";
+                btn.disabled = false;
             }
         };
 
@@ -1334,7 +1339,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=10') 
+                navigator.serviceWorker.register('sw.js?v=11') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
