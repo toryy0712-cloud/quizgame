@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=8">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=8">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=8">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=8">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=9">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=9">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=9">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=9">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=8">
+    <link rel="manifest" href="manifest.json?v=9">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -532,6 +532,16 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
+        // 뒤로가기 막기
+        function fn_noBack_new() {
+            history.pushState(null, null, location.href);
+            window.onpopstate = function () {
+                history.pushState(null, null, location.href);
+            };
+        }
+        // 바로 실행
+        fn_noBack_new();
+
         const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bnR4anNic3d5aHVtZ253bm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2Nzg0MDksImV4cCI6MjA5OTI1NDQwOX0.dD5xhlttjYwcnD2qdRzQCtQyDDa973A3-JppmNSSGnA';
         
@@ -677,7 +687,6 @@
             document.getElementById("mountain-track").style.display = "block";
             document.getElementById("dynamic-timer-container").style.display = "block";
             
-            // 🎲 100개가 있든 1000개가 있든 섞어서 딱 10개만 추출!
             let tempQueue = JSON.parse(JSON.stringify(allQuizzes));
             shuffleArray(tempQueue);
             currentPlayQueue = tempQueue.slice(0, 10); 
@@ -1162,7 +1171,6 @@
 
         document.getElementById("add-option-btn").onclick = () => createOptionInput();
 
-        // 📥 대량 등록(엑셀 복붙) 처리 로직
         document.getElementById("bulk-submit-btn").onclick = async () => {
             const text = document.getElementById("bulk-input").value;
             if (!text.trim()) {
@@ -1175,7 +1183,7 @@
             
             for (let i = 0; i < lines.length; i++) {
                 const cols = lines[i].split('\t');
-                if (cols.length < 4) continue; // 데이터가 부족한 줄 무시 (질문 + 정답 + 오답1, 2)
+                if (cols.length < 4) continue; 
                 
                 const q = cols[0].trim();
                 const correctOpt = cols[1].trim();
@@ -1188,7 +1196,6 @@
 
                 if(!q || !correctOpt) continue;
                 
-                // 오답이 3개 미만이라도 유효한 것만 배열에 넣기
                 const optArray = [correctOpt];
                 if(wrong1) optArray.push(wrong1);
                 if(wrong2) optArray.push(wrong2);
@@ -1198,10 +1205,10 @@
                     question: q,
                     hint: h,
                     timer: t,
-                    is_hidden: false, // 대량 등록은 기본적으로 일반 문제
+                    is_hidden: false, 
                     imageUrl: "", 
                     options: optArray,
-                    answer: [0] // 정답을 0번으로 고정 (플레이 시 자동으로 섞임)
+                    answer: [0] 
                 });
             }
             
@@ -1230,7 +1237,6 @@
             }
         };
 
-        // 기존 단건 추가 로직
         addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
             const hInput = document.getElementById("new-hint").value; 
@@ -1316,7 +1322,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=8') 
+                navigator.serviceWorker.register('sw.js?v=9') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
