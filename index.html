@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png">
-    <link rel="shortcut icon" href="mountain-quiz.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png">
+    <!-- 아이콘 관련 설정 (캐시 회피용 쿼리 추가) -->
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=2">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=2">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=2">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json">
+    <!-- 매니페스트 파일 캐시 회피 -->
+    <link rel="manifest" href="manifest.json?v=2">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -73,6 +75,12 @@
             font-size: 1.2rem;
             color: #2c3e50;
         }
+        
+        #lives-display {
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+        }
+
         #progress-container {
             width: 100%;
             background-color: #ecf0f1;
@@ -140,7 +148,7 @@
         #result { 
             font-size: 1.8rem; 
             font-weight: bold; 
-            color: #e74c3c;
+            color: #2c3e50;
             margin-top: 20px; 
             display: none; 
         }
@@ -270,7 +278,8 @@
         <div id="quiz" style="display: none;">
             <div id="quiz-header">
                 <span id="question-counter">문제 1 / 10</span>
-                <span id="timer-display" class="timer-text">⏳ 10초</span>
+                <span id="lives-display">❤️❤️❤️</span> <!-- 하트 표시 영역 추가 -->
+                <span id="timer-display" class="timer-text">⏳ 15초</span> <!-- 15초로 변경 -->
             </div>
             <div id="progress-container">
                 <div id="progress-bar"></div>
@@ -335,11 +344,14 @@
         let allQuizzes = []; 
         let currentPlayQueue = []; 
         let currentQuestionIndex = 0;
-        let score = 0; // 🚀 점수 변수 부활
+        let score = 0; 
         
-        // 타이머 관련 변수
+        // 🚀 하트 시스템 관련 변수 추가
+        const maxLives = 3;
+        let currentLives = 3;
+        
         let timerInterval;
-        let timeLeft = 10;
+        let timeLeft = 15; // 🚀 타이머 기본값을 15초로 변경
 
         let editingQuizId = null;
         let existingImageUrl = "";
@@ -353,7 +365,6 @@
         const optionsEl = document.getElementById("options");
         const submitAnswerBtn = document.getElementById("submit-answer-btn");
         
-        // 🚀 결과 관련 엘리먼트 부활
         const resultEl = document.getElementById("result");
         const restartBtn = document.getElementById("restart");
 
@@ -397,7 +408,6 @@
             loadingEl.style.display = "none";
             quizDiv.style.display = "none";
             
-            // 🚀 결과 화면 숨김 처리
             resultEl.style.display = "none";
             restartBtn.style.display = "none";
             
@@ -420,9 +430,25 @@
             startQuiz();
         };
 
+        // 🚀 하트 화면 업데이트 함수
+        function updateLivesDisplay() {
+            let hearts = "";
+            for(let i = 0; i < maxLives; i++) {
+                if (i < currentLives) {
+                    hearts += "❤️";
+                } else {
+                    hearts += "💔";
+                }
+            }
+            document.getElementById("lives-display").innerText = hearts;
+        }
+
         function startQuiz() {
             currentQuestionIndex = 0;
-            score = 0; // 🚀 점수 초기화 부활
+            score = 0; 
+            currentLives = maxLives; // 🚀 퀴즈 시작 시 하트 충전
+            updateLivesDisplay();
+            
             quizDiv.style.display = "block";
             document.getElementById("quiz-header").style.display = "flex";
             document.getElementById("progress-container").style.display = "block";
@@ -435,7 +461,7 @@
 
         function startTimer() {
             clearInterval(timerInterval);
-            timeLeft = 10;
+            timeLeft = 15; // 🚀 다음 문제로 넘어갈 때도 15초로 초기화되게 변경
             document.getElementById("timer-display").innerText = `⏳ ${timeLeft}초`;
             
             timerInterval = setInterval(() => {
@@ -449,9 +475,17 @@
             }, 1000);
         }
 
+        // 🚀 시간 초과 시 하트 감소 처리
         function handleTimeOut() {
             disableQuizUI();
-            goToNextQuestion();
+            currentLives--;
+            updateLivesDisplay();
+
+            if (currentLives <= 0) {
+                setTimeout(showGameOver, 500);
+            } else {
+                setTimeout(goToNextQuestion, 500); // 0.5초 뒤 다음 문제로 이동
+            }
         }
 
         function disableQuizUI() {
@@ -506,6 +540,7 @@
             submitAnswerBtn.style.display = "block";
         }
 
+        // 🚀 제출 시 오답이면 하트 감소 처리
         submitAnswerBtn.onclick = () => {
             const allOptions = document.querySelectorAll(".quiz-option");
             let hasSelection = false;
@@ -534,7 +569,7 @@
             const isFullyCorrect = (selectedWrongCount === 0 && selectedCorrectCount === correctOptionsCount);
 
             if (isFullyCorrect) {
-                score++; // 🚀 정답 시 점수 추가 부활
+                score++; 
                 disableQuizUI();
                 
                 confetti({
@@ -547,25 +582,39 @@
                 setTimeout(goToNextQuestion, 1500);
             } else {
                 disableQuizUI();
-                goToNextQuestion();
+                currentLives--; // 하트 감소
+                updateLivesDisplay();
+
+                if (currentLives <= 0) {
+                    setTimeout(showGameOver, 500); // 0.5초 뒤 게임 오버 화면 띄우기
+                } else {
+                    setTimeout(goToNextQuestion, 500);
+                }
             }
         };
 
-        // 다음 문제로 넘어가거나, 모든 문제를 풀었으면 결과 화면 표시
         function goToNextQuestion() {
             currentQuestionIndex++;
             if (currentQuestionIndex < currentPlayQueue.length) {
                 loadQuestion();
             } else {
-                showResult(); // 🚀 결과 화면 호출
+                showResult(); 
             }
         }
         
-        // 🚀 결과 화면 함수 부활
+        // 🚀 하트 0개 시 게임 오버 처리
+        function showGameOver() {
+            quizDiv.style.display = "none";
+            resultEl.style.display = "block";
+            resultEl.innerHTML = `<span style="color:#e74c3c">💀 게임 오버!</span><br><span style="font-size:1.3rem">하트를 모두 소진했습니다.</span><br><br>현재까지 총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
+            restartBtn.style.display = "block";
+        }
+
+        // 🚀 끝까지 완료했을 때 결과 처리
         function showResult() {
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
-            resultEl.innerHTML = `수고하셨습니다!<br>총 ${currentPlayQueue.length}문제 중 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
+            resultEl.innerHTML = `🎉 클리어! 수고하셨습니다.<br>총 ${currentPlayQueue.length}문제 중 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
             restartBtn.style.display = "block";
         }
         
@@ -845,7 +894,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
+                navigator.serviceWorker.register('sw.js?v=2') 
                     .then(registration => {
                         console.log('ServiceWorker 등록 성공:', registration.scope);
                     })
