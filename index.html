@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=6">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=6">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=6">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=6">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=7">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=7">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=7">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=7">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=6">
+    <link rel="manifest" href="manifest.json?v=7">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -386,7 +386,6 @@
     <button id="admin-btn">⚙️ 관리자</button>
 
     <div class="quiz-container">
-        <!-- 🔥 콤보 애니메이션 표시 영역 -->
         <div id="combo-display"></div>
 
         <h1>✨ 산지 퀴즈</h1>
@@ -404,12 +403,10 @@
                 <span id="timer-display" class="timer-text">⏳ 15초</span>
             </div>
             
-            <!-- 🚥 다이내믹 타이머 컬러 게이지 바 -->
             <div id="dynamic-timer-container">
                 <div id="dynamic-timer-bar"></div>
             </div>
             
-            <!-- 🧗‍♂️ 등산 테마 진척도 -->
             <div id="mountain-track">
                 <div id="climber">🧗‍♂️</div>
                 <div id="flag">🚩</div>
@@ -418,7 +415,6 @@
             <img id="quiz-image" src="" alt="퀴즈 이미지">
             <div id="question">질문이 여기에 표시됩니다.</div>
             
-            <!-- 💡 힌트 UI -->
             <div id="hint-container">
                 <button id="hint-btn" style="display: none;">💡 힌트 보기</button>
                 <div id="hint-text"></div>
@@ -432,7 +428,6 @@
         <button id="restart" class="btn">처음부터 다시 하기</button>
     </div>
 
-    <!-- 비밀번호 모달 -->
     <div id="password-modal" class="modal-overlay">
         <div class="modal-content">
             <h2>관리자 인증</h2>
@@ -443,7 +438,6 @@
         </div>
     </div>
 
-    <!-- 관리자 모달 -->
     <div id="admin-modal" class="modal-overlay">
         <div class="admin-panel">
             <h2>🛠️ 관리자 모드</h2>
@@ -456,15 +450,13 @@
             </div>
 
             <div class="admin-flex-container">
-                <!-- 폼 영역 -->
                 <div class="add-form">
-                    <!-- 🚪 비밀의 방 체크박스 추가 -->
                     <div style="background: #f5eef8; padding: 12px; border-radius: 5px; border: 1px solid #d2b4de;">
                         <label style="font-weight: bold; color: #8e44ad; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                             <input type="checkbox" id="new-is-hidden" style="width:20px; height:20px;"> 
                             🚪 비밀의 방 (히든 스테이지) 문제로 지정
                         </label>
-                        <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px; margin-left: 28px;">※ 유저가 힌트를 단 한 번도 쓰지 않고 클리어 시 보너스로 등장합니다. (반드시 Supabase에 is_hidden 열을 추가하세요!)</div>
+                        <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px; margin-left: 28px;">※ 유저가 힌트를 단 한 번도 쓰지 않고 클리어 시 보너스로 등장합니다.</div>
                     </div>
 
                     <input type="text" id="new-question" placeholder="질문을 입력하세요">
@@ -479,7 +471,6 @@
                     <button type="button" id="add-option-btn">+ 선택지 추가</button>
                 </div>
 
-                <!-- 👀 실시간 미리보기 영역 -->
                 <div class="preview-box">
                     <div class="preview-title">👀 실시간 미리보기</div>
                     <div id="preview-timer-text" style="color: #e74c3c; font-weight: bold; font-size: 0.9rem; align-self: flex-end;">⏳ 15초</div>
@@ -511,14 +502,12 @@
         let currentQuestionIndex = 0;
         let score = 0; 
         
-        // 🚀 하트 변수
         const maxLives = 3;
         let currentLives = 3;
         
-        // 🔥 콤보 및 💡 힌트 변수
         let currentCombo = 0;
         let hintsRemaining = 2;
-        let inHiddenStage = false; // 현재 히든 스테이지 진행 여부
+        let inHiddenStage = false; 
         
         let timerInterval;
         let timeLeft = 15;
@@ -566,14 +555,16 @@
                 const { data, error } = await supabase.from('quizzes').select('*');
                 if (error) throw error;
                 
-                // 🚪 is_hidden 값에 따라 일반 문제와 히든 문제를 분리
-                allQuizzes = data.filter(q => !q.is_hidden) || [];
-                hiddenQuizzes = data.filter(q => q.is_hidden) || [];
+                // 💡 안전 장치: 데이터가 비어있어도 코드가 터지지 않도록 방어
+                const safeData = data || [];
+                
+                allQuizzes = safeData.filter(q => !q.is_hidden);
+                hiddenQuizzes = safeData.filter(q => q.is_hidden);
                 
                 initStartScreen(); 
             } catch (e) {
                 console.error("데이터 로드 실패:", e);
-                loadingEl.innerText = "퀴즈를 불러올 수 없습니다. (Supabase is_hidden 열 추가 여부를 확인하세요!) 오류: " + e.message;
+                loadingEl.innerText = "퀴즈를 불러올 수 없습니다. 오류: " + e.message;
             }
         }
 
@@ -582,7 +573,7 @@
             quizDiv.style.display = "none";
             resultEl.style.display = "none";
             restartBtn.style.display = "none";
-            quizDiv.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)"; // 스타일 초기화
+            quizDiv.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)"; 
             quizDiv.style.border = "none";
             
             if(allQuizzes.length === 0) {
@@ -624,7 +615,6 @@
             }
         }
 
-        // 📳 화면 흔들림 발동 함수
         function triggerShake() {
             const container = document.querySelector('.quiz-container');
             container.classList.remove('shake-effect');
@@ -654,7 +644,6 @@
             loadQuestion();
         }
 
-        // 🚥 동적 타이머 색상 바 함수
         function startTimer(duration) {
             clearInterval(timerInterval);
             timeLeft = duration; 
@@ -663,19 +652,18 @@
             
             const tBar = document.getElementById("dynamic-timer-bar");
             tBar.style.width = "100%";
-            tBar.style.backgroundColor = "#2ecc71"; // 처음엔 초록색
+            tBar.style.backgroundColor = "#2ecc71"; 
             
             timerInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById("timer-display").innerText = `⏳ ${timeLeft}초`;
                 
-                // 게이지 바 퍼센트 및 색상 계산
                 let pct = (timeLeft / initialTimeForBar) * 100;
                 tBar.style.width = pct + "%";
                 
-                if (pct > 50) tBar.style.backgroundColor = "#2ecc71"; // 초록
-                else if (pct > 25) tBar.style.backgroundColor = "#f39c12"; // 주황
-                else tBar.style.backgroundColor = "#e74c3c"; // 빨강
+                if (pct > 50) tBar.style.backgroundColor = "#2ecc71"; 
+                else if (pct > 25) tBar.style.backgroundColor = "#f39c12"; 
+                else tBar.style.backgroundColor = "#e74c3c"; 
                 
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
@@ -686,7 +674,7 @@
 
         function handleTimeOut() {
             disableQuizUI();
-            triggerShake(); // 📳 시간 초과 시 화면 흔들림
+            triggerShake(); 
             currentLives--;
             currentCombo = 0; 
             updateLivesDisplay();
@@ -709,7 +697,6 @@
         function loadQuestion() {
             submitAnswerBtn.disabled = false;
             
-            // 🧗‍♂️ 등산 진척도 (히든 스테이지에서는 움직이지 않음)
             if (!inHiddenStage) {
                 const progressPercent = (currentQuestionIndex / currentPlayQueue.length) * 90; 
                 document.getElementById("climber").style.left = progressPercent + "%";
@@ -815,7 +802,7 @@
                 setTimeout(goToNextQuestion, 1500);
             } else {
                 disableQuizUI();
-                triggerShake(); // 📳 오답 시 화면 흔들림
+                triggerShake(); 
                 currentLives--; 
                 currentCombo = 0; 
                 updateLivesDisplay();
@@ -831,11 +818,9 @@
         function goToNextQuestion() {
             currentQuestionIndex++;
             
-            // 아직 풀 문제가 남아있다면 진행
             if (currentQuestionIndex < currentPlayQueue.length) {
                 loadQuestion();
             } 
-            // 🚪 힌트를 안 썼고, 아직 히든을 안 했고, 히든 문제가 DB에 존재한다면 진입!
             else if (!inHiddenStage && hintsRemaining === 2 && hiddenQuizzes.length > 0) {
                 inHiddenStage = true;
                 quizDiv.style.display = "none";
@@ -845,7 +830,7 @@
                 setTimeout(() => {
                     resultEl.style.display = "none";
                     quizDiv.style.display = "block";
-                    quizDiv.style.boxShadow = "0 0 20px rgba(142, 68, 173, 0.6)"; // 보라색 아우라
+                    quizDiv.style.boxShadow = "0 0 20px rgba(142, 68, 173, 0.6)"; 
                     quizDiv.style.border = "3px solid #8e44ad";
                     
                     const randomHidden = hiddenQuizzes[Math.floor(Math.random() * hiddenQuizzes.length)];
@@ -853,7 +838,6 @@
                     loadQuestion();
                 }, 3000);
             } 
-            // 모든 일정이 끝났을 때
             else {
                 document.getElementById("climber").style.left = "90%";
                 setTimeout(showResult, 500); 
@@ -870,14 +854,12 @@
         function showResult() {
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
-            const bonusText = inHiddenStage ? "<br><span style="color:#8e44ad; font-size:1.1rem;">(🚪 비밀의 방 문제 포함)</span>" : "";
+            const bonusText = inHiddenStage ? "<br><span style='color:#8e44ad; font-size:1.1rem;'>(🚪 비밀의 방 문제 포함)</span>" : "";
             resultEl.innerHTML = `🎉 🧗‍♂️ 등반 완료! 수고하셨습니다.<br>총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.${bonusText}`;
             restartBtn.style.display = "block";
         }
         
         restartBtn.onclick = initStartScreen;
-
-        // ------------- 관리자 및 미리보기 기능 -------------
         
         function updatePreview() {
             const q = document.getElementById("new-question").value || "질문이 입력되면 여기에 보입니다.";
@@ -927,7 +909,6 @@
             }
         }
         
-        // 미리보기 이벤트 바인딩
         document.getElementById("new-question").addEventListener("input", updatePreview);
         document.getElementById("new-hint").addEventListener("input", updatePreview);
         document.getElementById("new-timer").addEventListener("input", updatePreview);
@@ -966,7 +947,6 @@
         function renderAdminList() {
             quizListEl.innerHTML = "";
             
-            // 모든 퀴즈 배열을 합쳐서 리스트에 표시
             const totalQuizzes = [...allQuizzes, ...hiddenQuizzes];
             if (totalQuizzes.length === 0) {
                 quizListEl.innerHTML = "<p>등록된 퀴즈가 없습니다.</p>";
@@ -1193,7 +1173,7 @@
                     question: qInput,
                     hint: hInput, 
                     timer: tInput,
-                    is_hidden: isHiddenVal, // 🚪 데이터베이스에 히든 여부 저장
+                    is_hidden: isHiddenVal, 
                     imageUrl: finalImageUrl, 
                     options: options, 
                     answer: answerArray 
@@ -1218,7 +1198,7 @@
                 await fetchQuizzes(); 
                 renderAdminList();
             } catch (err) {
-                alert("처리 실패! 원인: " + err.message + "\n※ Supabase 데이터베이스에 is_hidden 열을 추가했는지 꼭 확인하세요!");
+                alert("처리 실패! 원인: " + err.message);
                 addQuizBtn.innerText = editingQuizId ? "수정 완료" : "새 퀴즈 추가하기";
                 addQuizBtn.disabled = false;
             }
@@ -1226,7 +1206,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=6') 
+                navigator.serviceWorker.register('sw.js?v=7') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
