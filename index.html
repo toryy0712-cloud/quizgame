@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=4">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=4">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=4">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=4">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=5">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=5">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=5">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=5">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=4">
+    <link rel="manifest" href="manifest.json?v=5">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -292,7 +292,7 @@
         .delete-btn:hover { background-color: #c0392b; }
         
         .add-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
-        .add-form input[type="text"] { padding: 12px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 1.1rem; }
+        .add-form input[type="text"], .add-form input[type="number"] { padding: 12px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 1.1rem; }
         #new-image { padding: 5px; font-size: 1rem; } 
         
         #options-wrapper {
@@ -400,6 +400,8 @@
                 <input type="text" id="new-question" placeholder="질문을 입력하세요">
                 
                 <input type="text" id="new-hint" placeholder="💡 힌트를 입력하세요 (선택 사항)">
+
+                <input type="number" id="new-timer" placeholder="⏱️ 제한 시간(초) - 비워두면 15초" min="1">
                 
                 <input type="file" id="new-image" accept="image/*">
                 <small style="color: #666; margin-top: -8px;">(※ 이미지를 새로 올리지 않으면 기존 이미지가 유지됩니다.)</small>
@@ -529,7 +531,6 @@
             if (currentCombo >= 2) {
                 const comboEl = document.getElementById("combo-display");
                 comboEl.innerText = `${currentCombo} COMBO! 🔥`;
-                // 애니메이션 재시작을 위한 트릭 (클래스 제거 후 다시 추가)
                 comboEl.classList.remove("combo-animate");
                 void comboEl.offsetWidth; 
                 comboEl.classList.add("combo-animate");
@@ -541,7 +542,7 @@
             score = 0; 
             currentLives = maxLives;
             currentCombo = 0;
-            hintsRemaining = 2; // 게임 시작 시 힌트 2개로 초기화
+            hintsRemaining = 2; 
             
             updateLivesDisplay();
             
@@ -555,9 +556,10 @@
             loadQuestion();
         }
 
-        function startTimer() {
+        // ⏱️ 동적 타이머 함수
+        function startTimer(duration) {
             clearInterval(timerInterval);
-            timeLeft = 15; 
+            timeLeft = duration; 
             document.getElementById("timer-display").innerText = `⏳ ${timeLeft}초`;
             
             timerInterval = setInterval(() => {
@@ -574,7 +576,7 @@
         function handleTimeOut() {
             disableQuizUI();
             currentLives--;
-            currentCombo = 0; // 시간 초과 시 콤보 초기화
+            currentCombo = 0; 
             updateLivesDisplay();
 
             if (currentLives <= 0) {
@@ -595,15 +597,17 @@
         function loadQuestion() {
             submitAnswerBtn.disabled = false;
             
-            // 🧗‍♂️ 등산 진척도 업데이트 (틀려도 앞으로 전진)
-            const progressPercent = (currentQuestionIndex / currentPlayQueue.length) * 90; // 깃발 피해서 90%까지만
+            const progressPercent = (currentQuestionIndex / currentPlayQueue.length) * 90; 
             document.getElementById("climber").style.left = progressPercent + "%";
             
             document.getElementById("question-counter").innerText = `문제 ${currentQuestionIndex + 1} / ${currentPlayQueue.length}`;
 
-            startTimer();
-
             const currentQuiz = currentPlayQueue[currentQuestionIndex];
+            
+            // ⏱️ 해당 문제의 타이머 값 가져오기 (없으면 15초)
+            const questionTimer = currentQuiz.timer || 15;
+            startTimer(questionTimer);
+
             questionEl.innerText = currentQuiz.question;
             
             if (currentQuiz.imageUrl && currentQuiz.imageUrl.trim() !== "") {
@@ -614,15 +618,14 @@
                 quizImageEl.style.display = "none";
             }
 
-            // 💡 힌트 UI 처리
             const hintBtn = document.getElementById("hint-btn");
             const hintTextEl = document.getElementById("hint-text");
-            hintTextEl.style.display = "none"; // 문제 바뀔 때 힌트 닫기
+            hintTextEl.style.display = "none"; 
 
             if (currentQuiz.hint && currentQuiz.hint.trim() !== "") {
                 hintBtn.style.display = "inline-block";
                 hintBtn.innerText = `💡 힌트 보기 (남은 횟수: ${hintsRemaining})`;
-                hintBtn.disabled = hintsRemaining <= 0; // 남은 횟수가 없으면 비활성화
+                hintBtn.disabled = hintsRemaining <= 0; 
                 
                 hintBtn.onclick = () => {
                     if (hintsRemaining > 0) {
@@ -630,7 +633,7 @@
                         hintTextEl.innerText = currentQuiz.hint;
                         hintTextEl.style.display = "block";
                         hintBtn.innerText = `💡 힌트 보기 (남은 횟수: ${hintsRemaining})`;
-                        hintBtn.disabled = true; // 현재 문제에서는 더 이상 못 누르게 함
+                        hintBtn.disabled = true; 
                     }
                 };
             } else {
@@ -688,7 +691,7 @@
 
             if (isFullyCorrect) {
                 score++; 
-                currentCombo++; // 🔥 정답 시 콤보 증가
+                currentCombo++; 
                 triggerComboAnimation();
                 
                 disableQuizUI();
@@ -704,7 +707,7 @@
             } else {
                 disableQuizUI();
                 currentLives--; 
-                currentCombo = 0; // 🔥 오답 시 콤보 초기화
+                currentCombo = 0; 
                 updateLivesDisplay();
 
                 if (currentLives <= 0) {
@@ -720,7 +723,6 @@
             if (currentQuestionIndex < currentPlayQueue.length) {
                 loadQuestion();
             } else {
-                // 게임 클리어 시 깃발 위치로 이동
                 document.getElementById("climber").style.left = "90%";
                 setTimeout(showResult, 500); 
             }
@@ -784,12 +786,15 @@
                 const imgIcon = (q.imageUrl && q.imageUrl.trim() !== "") ? " 🖼️" : "";
                 const hintIcon = (q.hint && q.hint.trim() !== "") ? " 💡" : "";
                 
+                // ⏱️ 초 표시 추가
+                const timerText = q.timer ? ` [⏱️ ${q.timer}초]` : " [⏱️ 15초]";
+                
                 let correctAnsArr = Array.isArray(q.answer) ? q.answer : [q.answer];
                 let answerTexts = correctAnsArr.map(idx => q.options[idx]).join(", ");
                 
                 div.innerHTML = `
                     <div class="quiz-info">
-                        <strong>Q: ${q.question}${imgIcon}${hintIcon}</strong><br>
+                        <strong>Q: ${q.question}${imgIcon}${hintIcon}${timerText}</strong><br>
                         <span style="font-size: 1rem; color: #555;">정답: ${answerTexts}</span>
                     </div>
                     <div class="action-btns">
@@ -832,7 +837,9 @@
             existingImageUrl = quiz.imageUrl || "";
 
             document.getElementById("new-question").value = quiz.question;
-            document.getElementById("new-hint").value = quiz.hint || ""; // 힌트 불러오기
+            document.getElementById("new-hint").value = quiz.hint || ""; 
+            // ⏱️ 타이머 값 불러오기
+            document.getElementById("new-timer").value = quiz.timer || ""; 
             document.getElementById("new-image").value = ""; 
 
             optionsWrapper.innerHTML = "";
@@ -859,6 +866,7 @@
             existingImageUrl = "";
             document.getElementById("new-question").value = "";
             document.getElementById("new-hint").value = ""; 
+            document.getElementById("new-timer").value = ""; // ⏱️ 타이머 초기화
             document.getElementById("new-image").value = ""; 
             
             optionsWrapper.innerHTML = "";
@@ -939,7 +947,14 @@
 
         addQuizBtn.onclick = async () => {
             const qInput = document.getElementById("new-question").value;
-            const hInput = document.getElementById("new-hint").value; // 💡 힌트 데이터 가져오기
+            const hInput = document.getElementById("new-hint").value; 
+            
+            // ⏱️ 타이머 값 가져와서 비어있거나 0 이하면 15초로 처리
+            let tInput = parseInt(document.getElementById("new-timer").value);
+            if (isNaN(tInput) || tInput <= 0) {
+                tInput = 15;
+            }
+
             const imageFile = document.getElementById("new-image").files[0];
             
             const optInputs = document.querySelectorAll(".opt-input");
@@ -983,7 +998,8 @@
 
                 const quizData = {
                     question: qInput,
-                    hint: hInput, // 💡 데이터베이스에 힌트 추가
+                    hint: hInput, 
+                    timer: tInput, // ⏱️ 데이터베이스에 타이머 정보 추가
                     imageUrl: finalImageUrl, 
                     options: options, 
                     answer: answerArray 
@@ -1016,7 +1032,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=4') 
+                navigator.serviceWorker.register('sw.js?v=5') 
                     .then(registration => {
                         console.log('ServiceWorker 등록 성공:', registration.scope);
                     })
