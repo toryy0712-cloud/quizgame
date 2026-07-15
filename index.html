@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=13">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=13">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=13">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=13">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=14">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=14">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=14">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=14">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=13">
+    <link rel="manifest" href="manifest.json?v=14">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -419,7 +419,7 @@
             border-left: 4px solid #3498db;
         }
 
-        /* 🏠 처음으로 가기 버튼 스타일 */
+        /* 🏠 처음으로 가기 버튼 및 초기화 버튼 스타일 */
         #go-home-btn {
             margin-left: 15px; 
             background-color: #e74c3c; 
@@ -433,6 +433,18 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         #go-home-btn:hover { background-color: #c0392b; }
+
+        #reset-stats-btn {
+            background-color: #e74c3c; 
+            color: white; 
+            border: none; 
+            padding: 5px 10px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+        }
+        #reset-stats-btn:hover { background-color: #c0392b; }
     </style>
 </head>
 <body>
@@ -501,6 +513,10 @@
         <div class="admin-panel">
             <h2>🛠️ 관리자 모드</h2>
             
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; color: #2c3e50;">📊 실시간 운영 통계</h3>
+                <button id="reset-stats-btn">🔄 통계 초기화</button>
+            </div>
             <div class="stats-dashboard">
                 <div>
                     <div class="stat-box-title">총 참여 인원</div>
@@ -613,23 +629,23 @@
             osc.stop(audioCtx.currentTime + delay + duration);
         }
 
-        function playCorrect() { // 정답 사운드
+        function playCorrect() { 
             playTone(523.25, 'sine', 0.1, 0.2); 
             playTone(659.25, 'sine', 0.2, 0.2, 0.1); 
         }
-        function playWrong() { // 오답 사운드
+        function playWrong() { 
             playTone(250, 'sawtooth', 0.3, 0.2);
         }
-        function playTick() { // 5초 이하 타이머 촉박 사운드
+        function playTick() { 
             playTone(800, 'square', 0.05, 0.05);
         }
-        function playClear() { // 완주 성공 사운드
+        function playClear() { 
             playTone(523.25, 'sine', 0.1, 0.2, 0);
             playTone(659.25, 'sine', 0.1, 0.2, 0.1);
             playTone(783.99, 'sine', 0.1, 0.2, 0.2);
             playTone(1046.50, 'sine', 0.4, 0.2, 0.3);
         }
-        function playGameOver() { // 게임 오버 사운드
+        function playGameOver() { 
             playTone(300, 'sawtooth', 0.3, 0.2, 0);
             playTone(250, 'sawtooth', 0.3, 0.2, 0.3);
             playTone(200, 'sawtooth', 0.6, 0.2, 0.6);
@@ -657,11 +673,11 @@
         let timeLeft = 15;
         let initialTimeForBar = 15;
         let targetEndTime = 0; 
-        let lastTickTime = -1; // 틱 사운드 중복 재생 방지용
+        let lastTickTime = -1; 
 
         let editingQuizId = null;
         let existingImageUrl = "";
-        let adminStatsInterval = null; // 📊 통계 새로고침용 인터벌
+        let adminStatsInterval = null; 
 
         const loadingEl = document.getElementById("loading");
         const startScreenEl = document.getElementById("start-screen"); 
@@ -687,7 +703,6 @@
         const editModeIndicator = document.getElementById("edit-mode-indicator");
         let optionCount = 0;
 
-        // 💾 로컬 스토리지 상태 저장 함수
         function saveState() {
             const state = {
                 playQueue: currentPlayQueue,
@@ -797,12 +812,12 @@
         }
 
         startBtn.onclick = () => {
-            initAudio(); // 🎵 게임 시작 시 사운드 엔진 엔진 가동
+            initAudio(); 
             startScreenEl.style.display = "none";
             startQuiz();
         };
 
-        // 🏠 처음으로 가기 버튼 로직
+        // 🏠 처음으로 가기 로직
         document.getElementById("go-home-btn").onclick = () => {
             if(confirm("정말 처음 화면으로 돌아가시겠습니까? 진행 중인 기록은 모두 사라집니다.")) {
                 clearInterval(timerInterval);
@@ -885,7 +900,6 @@
                 else if (pct > 25) tBar.style.backgroundColor = "#f39c12"; 
                 else tBar.style.backgroundColor = "#e74c3c"; 
                 
-                // 🎵 5초 이하일 때 째깍 사운드 재생
                 if (timeLeft <= 5 && timeLeft > 0 && lastTickTime !== timeLeft) {
                     playTick();
                     lastTickTime = timeLeft;
@@ -903,7 +917,7 @@
 
         function handleTimeOut() {
             disableQuizUI();
-            playWrong(); // 🎵 시간 초과 사운드
+            playWrong(); 
             triggerShake(); 
             currentLives--;
             currentCombo = 0; 
@@ -1030,7 +1044,7 @@
             if (isFullyCorrect) {
                 score++; 
                 currentCombo++; 
-                playCorrect(); // 🎵 정답 사운드
+                playCorrect(); 
                 triggerComboAnimation();
                 disableQuizUI();
                 
@@ -1041,7 +1055,7 @@
                 setTimeout(goToNextQuestion, 1500);
             } else {
                 disableQuizUI();
-                playWrong(); // 🎵 오답 사운드
+                playWrong(); 
                 triggerShake(); 
                 currentLives--; 
                 currentCombo = 0; 
@@ -1085,19 +1099,18 @@
         }
         
         async function showGameOver() {
-            playGameOver(); // 🎵 게임 오버 사운드
+            playGameOver(); 
             clearState(); 
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
             resultEl.innerHTML = `<span style="color:#e74c3c">💀 게임 오버!</span><br><span style="font-size:1.3rem">하트를 모두 소진했습니다.</span><br><br>현재까지 총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
             restartBtn.style.display = "block";
             
-            // 📊 통계 DB에 기록 전송 (실패)
             try { await supabase.from('play_logs').insert([{ score: score, is_clear: false }]); } catch(e){}
         }
 
         async function showResult() {
-            playClear(); // 🎵 클리어 사운드
+            playClear(); 
             clearState(); 
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
@@ -1105,13 +1118,12 @@
             resultEl.innerHTML = `🎉 🧗‍♂️ 등반 완료! 수고하셨습니다.<br>총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.${bonusText}`;
             restartBtn.style.display = "block";
             
-            // 📊 통계 DB에 기록 전송 (성공)
             try { await supabase.from('play_logs').insert([{ score: score, is_clear: true }]); } catch(e){}
         }
         
         restartBtn.onclick = initStartScreen;
         
-        // 📊 통계 데이터 긁어오기 (다중 기기 실시간 동기화)
+        // 📊 통계 데이터 가져오기 (실시간 갱신용)
         async function fetchAdminStats() {
             try {
                 const { data, error } = await supabase.from('play_logs').select('score, is_clear');
@@ -1129,6 +1141,20 @@
             }
         }
         
+        // 🔄 통계 초기화 리셋 버튼
+        document.getElementById("reset-stats-btn").onclick = async () => {
+            if(confirm("정말 모든 통계 데이터(참여 인원, 완주, 평균 점수)를 초기화하시겠습니까?\n※ 퀴즈 문제는 삭제되지 않습니다.")) {
+                try {
+                    const { error } = await supabase.from('play_logs').delete().gt('id', -1);
+                    if (error) throw error;
+                    alert("운영 통계가 완전히 초기화되었습니다.");
+                    fetchAdminStats(); // 즉시 UI 반영
+                } catch(err) {
+                    alert("초기화 실패! 원인: " + err.message);
+                }
+            }
+        };
+
         function updatePreview() {
             const q = document.getElementById("new-question").value || "질문이 입력되면 여기에 보입니다.";
             document.getElementById("preview-q").innerText = q;
@@ -1184,7 +1210,7 @@
         document.getElementById("options-wrapper").addEventListener("input", updatePreview);
 
         adminBtn.onclick = () => { 
-            initAudio(); // 🎵 관리자 진입 시에도 사운드 권한 확보
+            initAudio(); 
             pwModal.style.display = "flex"; 
             pwInput.value = ""; 
             document.body.style.overflow = "hidden"; 
@@ -1195,7 +1221,6 @@
             document.body.style.overflow = "auto"; 
         };
 
-        // 🔒 Supabase 서버 사이드 비밀번호 검증 (해킹 원천 차단)
         document.getElementById("pw-submit-btn").onclick = async () => {
             const enteredPw = pwInput.value;
             const btn = document.getElementById("pw-submit-btn");
@@ -1212,9 +1237,11 @@
                     resetForm(); 
                     renderAdminList();
                     
-                    // 📊 통계 초기 로드 및 3초마다 갱신 (실시간 동기화)
+                    // ⚙️ 통계 무한 동기화 시작 (창을 닫아도 멈추지 않음)
+                    if (!adminStatsInterval) {
+                        adminStatsInterval = setInterval(fetchAdminStats, 3000);
+                    }
                     fetchAdminStats();
-                    adminStatsInterval = setInterval(fetchAdminStats, 3000);
                 } else {
                     alert("비밀번호가 틀렸습니다.");
                 }
@@ -1229,7 +1256,7 @@
         document.getElementById("close-admin-btn").onclick = () => {
             adminModal.style.display = "none";
             document.body.style.overflow = "auto"; 
-            clearInterval(adminStatsInterval); // 창 닫으면 통계 갱신 멈춤
+            // clearInterval(adminStatsInterval); <-- 제거됨: 창을 닫아도 계속 통계 갱신 유지!
             resetForm();
             fetchQuizzes(); 
         };
@@ -1562,7 +1589,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=13') 
+                navigator.serviceWorker.register('sw.js?v=14') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
