@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=11">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=11">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=11">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=11">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=12">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=12">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=12">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=12">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=11">
+    <link rel="manifest" href="manifest.json?v=12">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -532,14 +532,13 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        // 뒤로가기 막기
+        // 🛡️ 뒤로가기 완벽 방지
         function fn_noBack_new() {
             history.pushState(null, null, location.href);
             window.onpopstate = function () {
                 history.pushState(null, null, location.href);
             };
         }
-        // 바로 실행
         fn_noBack_new();
 
         const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
@@ -563,6 +562,7 @@
         let timerInterval;
         let timeLeft = 15;
         let initialTimeForBar = 15;
+        let targetEndTime = 0; // 절대 시간 저장을 위한 변수
 
         let editingQuizId = null;
         let existingImageUrl = "";
@@ -591,6 +591,27 @@
         const editModeIndicator = document.getElementById("edit-mode-indicator");
         let optionCount = 0;
 
+        // 💾 로컬 스토리지 상태 저장 함수
+        function saveState() {
+            const state = {
+                playQueue: currentPlayQueue,
+                currentIndex: currentQuestionIndex,
+                score: score,
+                lives: currentLives,
+                combo: currentCombo,
+                hints: hintsRemaining,
+                inHidden: inHiddenStage,
+                targetEndTime: targetEndTime,
+                initialTimeForBar: initialTimeForBar
+            };
+            localStorage.setItem('mountainQuizState', JSON.stringify(state));
+        }
+
+        // 💾 로컬 스토리지 상태 초기화 함수
+        function clearState() {
+            localStorage.removeItem('mountainQuizState');
+        }
+
         function shuffleArray(array) {
             let currentIndex = array.length, randomIndex;
             while (currentIndex !== 0) {
@@ -610,11 +631,52 @@
                 allQuizzes = safeData.filter(q => !q.is_hidden);
                 hiddenQuizzes = safeData.filter(q => q.is_hidden);
                 
-                initStartScreen(); 
+                checkSavedState(); // 💾 저장된 게임이 있는지 확인
             } catch (e) {
                 console.error("데이터 로드 실패:", e);
                 loadingEl.innerText = "퀴즈를 불러올 수 없습니다. 오류: " + e.message;
             }
+        }
+
+        // 💾 새로고침 시 이전에 풀던 상태로 즉시 복구하는 함수
+        function checkSavedState() {
+            const saved = localStorage.getItem('mountainQuizState');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    currentPlayQueue = state.playQueue;
+                    currentQuestionIndex = state.currentIndex;
+                    score = state.score;
+                    currentLives = state.lives;
+                    currentCombo = state.combo;
+                    hintsRemaining = state.hints;
+                    inHiddenStage = state.inHidden;
+                    targetEndTime = state.targetEndTime;
+                    initialTimeForBar = state.initialTimeForBar;
+
+                    loadingEl.style.display = "none";
+                    startScreenEl.style.display = "none";
+                    quizDiv.style.display = "block";
+                    document.getElementById("quiz-header").style.display = "flex";
+                    document.getElementById("mountain-track").style.display = "block";
+                    document.getElementById("dynamic-timer-container").style.display = "block";
+                    
+                    updateLivesDisplay();
+                    if(currentCombo >= 2) {
+                        const comboEl = document.getElementById("combo-display");
+                        comboEl.innerText = `${currentCombo} COMBO! 🔥`;
+                        comboEl.style.opacity = "1";
+                        setTimeout(() => { comboEl.style.opacity = "0"; }, 2000);
+                    }
+                    
+                    loadQuestion(true); // true = 이전에 하던 것 복구 모드
+                    return;
+                } catch (e) {
+                    console.error("저장된 상태를 불러오는 데 실패했습니다.", e);
+                    clearState();
+                }
+            }
+            initStartScreen();
         }
 
         function initStartScreen() {
@@ -680,6 +742,8 @@
             hintsRemaining = 2; 
             inHiddenStage = false;
             
+            clearState(); // 💾 새 게임 시작 시 이전 기록 완전 삭제
+            
             updateLivesDisplay();
             
             quizDiv.style.display = "block";
@@ -691,24 +755,27 @@
             shuffleArray(tempQueue);
             currentPlayQueue = tempQueue.slice(0, 10); 
             
-            loadQuestion();
+            loadQuestion(false); // 새로 시작하는 모드
         }
 
-        function startTimer(duration) {
+        // ⏱️ 절대 시간을 기준으로 꼼수 새로고침을 막는 완벽한 타이머
+        function startTimer() {
             clearInterval(timerInterval);
-            timeLeft = duration; 
-            initialTimeForBar = duration;
-            document.getElementById("timer-display").innerText = `⏳ ${timeLeft}초`;
-            
             const tBar = document.getElementById("dynamic-timer-bar");
-            tBar.style.width = "100%";
-            tBar.style.backgroundColor = "#2ecc71"; 
+            tBar.style.transition = "width 1s linear, background-color 0.3s ease";
             
-            timerInterval = setInterval(() => {
-                timeLeft--;
+            function tick() {
+                const now = Date.now();
+                timeLeft = Math.ceil((targetEndTime - now) / 1000);
+                
+                if (timeLeft < 0) timeLeft = 0;
+                
                 document.getElementById("timer-display").innerText = `⏳ ${timeLeft}초`;
                 
                 let pct = (timeLeft / initialTimeForBar) * 100;
+                if (pct < 0) pct = 0;
+                if (pct > 100) pct = 100;
+                
                 tBar.style.width = pct + "%";
                 
                 if (pct > 50) tBar.style.backgroundColor = "#2ecc71"; 
@@ -719,7 +786,10 @@
                     clearInterval(timerInterval);
                     handleTimeOut();
                 }
-            }, 1000);
+            }
+            
+            tick(); // 딜레이 없이 즉시 화면에 남은 시간 반영
+            timerInterval = setInterval(tick, 1000);
         }
 
         function handleTimeOut() {
@@ -744,7 +814,8 @@
             document.getElementById("hint-btn").disabled = true;
         }
 
-        function loadQuestion() {
+        // 💾 isResuming이 true면, 로컬 스토리지에 남아있던 타이머를 이어서 씁니다.
+        function loadQuestion(isResuming = false) {
             submitAnswerBtn.disabled = false;
             
             if (!inHiddenStage) {
@@ -758,7 +829,15 @@
 
             const currentQuiz = currentPlayQueue[currentQuestionIndex];
             const questionTimer = currentQuiz.timer || 15;
-            startTimer(questionTimer);
+            
+            // 💾 새로 진입한 문제라면 종료 목표 시간을 새롭게 저장
+            if (!isResuming) {
+                initialTimeForBar = questionTimer;
+                targetEndTime = Date.now() + (questionTimer * 1000);
+                saveState(); // 화면에 뜨자마자 현재 문제 상태 백업
+            }
+
+            startTimer();
 
             questionEl.innerText = currentQuiz.question;
             
@@ -786,6 +865,7 @@
                         hintTextEl.style.display = "block";
                         hintBtn.innerText = `💡 힌트 보기 (남은 횟수: ${hintsRemaining})`;
                         hintBtn.disabled = true; 
+                        saveState(); // 💾 힌트를 소모한 기록도 즉시 저장
                     }
                 };
             } else {
@@ -869,7 +949,7 @@
             currentQuestionIndex++;
             
             if (currentQuestionIndex < currentPlayQueue.length) {
-                loadQuestion();
+                loadQuestion(false);
             } 
             else if (!inHiddenStage && hintsRemaining === 2 && hiddenQuizzes.length > 0) {
                 inHiddenStage = true;
@@ -885,7 +965,7 @@
                     
                     const randomHidden = hiddenQuizzes[Math.floor(Math.random() * hiddenQuizzes.length)];
                     currentPlayQueue.push(randomHidden);
-                    loadQuestion();
+                    loadQuestion(false);
                 }, 3000);
             } 
             else {
@@ -895,6 +975,7 @@
         }
         
         function showGameOver() {
+            clearState(); // 💾 게임 오버 시 찌꺼기 메모리 청소
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
             resultEl.innerHTML = `<span style="color:#e74c3c">💀 게임 오버!</span><br><span style="font-size:1.3rem">하트를 모두 소진했습니다.</span><br><br>현재까지 총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
@@ -902,6 +983,7 @@
         }
 
         function showResult() {
+            clearState(); // 💾 완주 성공 시 찌꺼기 메모리 청소
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
             const bonusText = inHiddenStage ? "<br><span style='color:#8e44ad; font-size:1.1rem;'>(🚪 비밀의 방 문제 포함)</span>" : "";
@@ -1339,7 +1421,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=11') 
+                navigator.serviceWorker.register('sw.js?v=12') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
