@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>산지 퀴즈 부스</title>
     
-    <link rel="icon" type="image/png" href="mountain-quiz.png?v=12">
-    <link rel="shortcut icon" href="mountain-quiz.png?v=12">
-    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=12">
-    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=12">
+    <link rel="icon" type="image/png" href="mountain-quiz.png?v=13">
+    <link rel="shortcut icon" href="mountain-quiz.png?v=13">
+    <link rel="apple-touch-icon" sizes="180x180" href="mountain-quiz.png?v=13">
+    <meta name="msapplication-TileImage" content="mountain-quiz.png?v=13">
     <meta name="msapplication-TileColor" content="#2c3e50">
     
-    <link rel="manifest" href="manifest.json?v=12">
+    <link rel="manifest" href="manifest.json?v=13">
     <meta name="theme-color" content="#2c3e50">
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -295,6 +295,21 @@
             flex-shrink: 0; 
         }
         
+        /* 📊 실시간 운영 통계 대시보드 스타일 */
+        .stats-dashboard {
+            background: #eaf2f8; 
+            border-left: 5px solid #3498db; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+            display: flex; 
+            justify-content: space-around; 
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .stat-box-title { font-size: 0.95rem; color: #7f8c8d; font-weight: bold; }
+        .stat-box-val { font-size: 1.8rem; font-weight: 900; color: #2c3e50; margin-top: 5px; }
+
         .quiz-list-container {
             max-height: 250px; 
             flex-shrink: 0;
@@ -320,7 +335,6 @@
         .delete-btn { background-color: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 1rem; }
         .delete-btn:hover { background-color: #c0392b; }
         
-        /* 어드민 레이아웃을 2단으로 나누기 (폼 vs 미리보기) */
         .admin-flex-container {
             display: flex;
             gap: 20px;
@@ -331,7 +345,6 @@
         .add-form { flex: 1; display: flex; flex-direction: column; gap: 12px; text-align: left; }
         .add-form input[type="text"], .add-form input[type="number"] { padding: 12px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 1.1rem; }
         
-        /* 👀 미리보기 영역 스타일 */
         .preview-box {
             flex: 1;
             border: 2px dashed #bdc3c7;
@@ -380,7 +393,6 @@
             cursor: pointer;
         }
 
-        /* 📥 대량 등록 섹션 스타일 */
         .bulk-add-section {
             margin-top: 30px;
             padding-top: 20px;
@@ -406,6 +418,21 @@
             color: #2c3e50;
             border-left: 4px solid #3498db;
         }
+
+        /* 🏠 처음으로 가기 버튼 스타일 */
+        #go-home-btn {
+            margin-left: 15px; 
+            background-color: #e74c3c; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            padding: 5px 10px; 
+            font-size: 0.9rem; 
+            font-weight: bold; 
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #go-home-btn:hover { background-color: #c0392b; }
     </style>
 </head>
 <body>
@@ -425,9 +452,14 @@
         
         <div id="quiz" style="display: none;">
             <div id="quiz-header">
-                <span id="question-counter">문제 1 / 10</span>
-                <span id="lives-display">❤️❤️❤️</span>
-                <span id="timer-display" class="timer-text">⏳ 15초</span>
+                <div>
+                    <span id="question-counter">문제 1 / 10</span>
+                    <button id="go-home-btn">🏠 처음으로</button>
+                </div>
+                <div>
+                    <span id="lives-display">❤️❤️❤️</span>
+                    <span id="timer-display" class="timer-text" style="margin-left:10px;">⏳ 15초</span>
+                </div>
             </div>
             
             <div id="dynamic-timer-container">
@@ -469,6 +501,21 @@
         <div class="admin-panel">
             <h2>🛠️ 관리자 모드</h2>
             
+            <div class="stats-dashboard">
+                <div>
+                    <div class="stat-box-title">총 참여 인원</div>
+                    <div id="stat-total" class="stat-box-val">0명</div>
+                </div>
+                <div>
+                    <div class="stat-box-title">산지 정복(완주)</div>
+                    <div id="stat-clear" class="stat-box-val" style="color: #2ecc71;">0명</div>
+                </div>
+                <div>
+                    <div class="stat-box-title">평균 획득 점수</div>
+                    <div id="stat-avg" class="stat-box-val" style="color: #f39c12;">0점</div>
+                </div>
+            </div>
+
             <div class="quiz-list-container" id="quiz-list"></div>
 
             <div id="edit-mode-indicator">
@@ -541,6 +588,53 @@
         }
         fn_noBack_new();
 
+        // 🎵 사운드 효과(SFX) 시스템 초기화 및 함수
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playTone(freq, type, duration, vol=0.1, delay=0) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + duration);
+        }
+
+        function playCorrect() { // 정답 사운드
+            playTone(523.25, 'sine', 0.1, 0.2); 
+            playTone(659.25, 'sine', 0.2, 0.2, 0.1); 
+        }
+        function playWrong() { // 오답 사운드
+            playTone(250, 'sawtooth', 0.3, 0.2);
+        }
+        function playTick() { // 5초 이하 타이머 촉박 사운드
+            playTone(800, 'square', 0.05, 0.05);
+        }
+        function playClear() { // 완주 성공 사운드
+            playTone(523.25, 'sine', 0.1, 0.2, 0);
+            playTone(659.25, 'sine', 0.1, 0.2, 0.1);
+            playTone(783.99, 'sine', 0.1, 0.2, 0.2);
+            playTone(1046.50, 'sine', 0.4, 0.2, 0.3);
+        }
+        function playGameOver() { // 게임 오버 사운드
+            playTone(300, 'sawtooth', 0.3, 0.2, 0);
+            playTone(250, 'sawtooth', 0.3, 0.2, 0.3);
+            playTone(200, 'sawtooth', 0.6, 0.2, 0.6);
+        }
+
         const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bnR4anNic3d5aHVtZ253bm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2Nzg0MDksImV4cCI6MjA5OTI1NDQwOX0.dD5xhlttjYwcnD2qdRzQCtQyDDa973A3-JppmNSSGnA';
         
@@ -562,10 +656,12 @@
         let timerInterval;
         let timeLeft = 15;
         let initialTimeForBar = 15;
-        let targetEndTime = 0; // 절대 시간 저장을 위한 변수
+        let targetEndTime = 0; 
+        let lastTickTime = -1; // 틱 사운드 중복 재생 방지용
 
         let editingQuizId = null;
         let existingImageUrl = "";
+        let adminStatsInterval = null; // 📊 통계 새로고침용 인터벌
 
         const loadingEl = document.getElementById("loading");
         const startScreenEl = document.getElementById("start-screen"); 
@@ -607,7 +703,6 @@
             localStorage.setItem('mountainQuizState', JSON.stringify(state));
         }
 
-        // 💾 로컬 스토리지 상태 초기화 함수
         function clearState() {
             localStorage.removeItem('mountainQuizState');
         }
@@ -631,14 +726,13 @@
                 allQuizzes = safeData.filter(q => !q.is_hidden);
                 hiddenQuizzes = safeData.filter(q => q.is_hidden);
                 
-                checkSavedState(); // 💾 저장된 게임이 있는지 확인
+                checkSavedState(); 
             } catch (e) {
                 console.error("데이터 로드 실패:", e);
                 loadingEl.innerText = "퀴즈를 불러올 수 없습니다. 오류: " + e.message;
             }
         }
 
-        // 💾 새로고침 시 이전에 풀던 상태로 즉시 복구하는 함수
         function checkSavedState() {
             const saved = localStorage.getItem('mountainQuizState');
             if (saved) {
@@ -669,7 +763,7 @@
                         setTimeout(() => { comboEl.style.opacity = "0"; }, 2000);
                     }
                     
-                    loadQuestion(true); // true = 이전에 하던 것 복구 모드
+                    loadQuestion(true); 
                     return;
                 } catch (e) {
                     console.error("저장된 상태를 불러오는 데 실패했습니다.", e);
@@ -703,8 +797,18 @@
         }
 
         startBtn.onclick = () => {
+            initAudio(); // 🎵 게임 시작 시 사운드 엔진 엔진 가동
             startScreenEl.style.display = "none";
             startQuiz();
+        };
+
+        // 🏠 처음으로 가기 버튼 로직
+        document.getElementById("go-home-btn").onclick = () => {
+            if(confirm("정말 처음 화면으로 돌아가시겠습니까? 진행 중인 기록은 모두 사라집니다.")) {
+                clearInterval(timerInterval);
+                clearState();
+                initStartScreen();
+            }
         };
 
         function updateLivesDisplay() {
@@ -742,8 +846,7 @@
             hintsRemaining = 2; 
             inHiddenStage = false;
             
-            clearState(); // 💾 새 게임 시작 시 이전 기록 완전 삭제
-            
+            clearState(); 
             updateLivesDisplay();
             
             quizDiv.style.display = "block";
@@ -755,14 +858,14 @@
             shuffleArray(tempQueue);
             currentPlayQueue = tempQueue.slice(0, 10); 
             
-            loadQuestion(false); // 새로 시작하는 모드
+            loadQuestion(false); 
         }
 
-        // ⏱️ 절대 시간을 기준으로 꼼수 새로고침을 막는 완벽한 타이머
         function startTimer() {
             clearInterval(timerInterval);
             const tBar = document.getElementById("dynamic-timer-bar");
             tBar.style.transition = "width 1s linear, background-color 0.3s ease";
+            lastTickTime = -1;
             
             function tick() {
                 const now = Date.now();
@@ -782,18 +885,25 @@
                 else if (pct > 25) tBar.style.backgroundColor = "#f39c12"; 
                 else tBar.style.backgroundColor = "#e74c3c"; 
                 
+                // 🎵 5초 이하일 때 째깍 사운드 재생
+                if (timeLeft <= 5 && timeLeft > 0 && lastTickTime !== timeLeft) {
+                    playTick();
+                    lastTickTime = timeLeft;
+                }
+
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
                     handleTimeOut();
                 }
             }
             
-            tick(); // 딜레이 없이 즉시 화면에 남은 시간 반영
+            tick(); 
             timerInterval = setInterval(tick, 1000);
         }
 
         function handleTimeOut() {
             disableQuizUI();
+            playWrong(); // 🎵 시간 초과 사운드
             triggerShake(); 
             currentLives--;
             currentCombo = 0; 
@@ -814,7 +924,6 @@
             document.getElementById("hint-btn").disabled = true;
         }
 
-        // 💾 isResuming이 true면, 로컬 스토리지에 남아있던 타이머를 이어서 씁니다.
         function loadQuestion(isResuming = false) {
             submitAnswerBtn.disabled = false;
             
@@ -830,11 +939,10 @@
             const currentQuiz = currentPlayQueue[currentQuestionIndex];
             const questionTimer = currentQuiz.timer || 15;
             
-            // 💾 새로 진입한 문제라면 종료 목표 시간을 새롭게 저장
             if (!isResuming) {
                 initialTimeForBar = questionTimer;
                 targetEndTime = Date.now() + (questionTimer * 1000);
-                saveState(); // 화면에 뜨자마자 현재 문제 상태 백업
+                saveState(); 
             }
 
             startTimer();
@@ -865,7 +973,7 @@
                         hintTextEl.style.display = "block";
                         hintBtn.innerText = `💡 힌트 보기 (남은 횟수: ${hintsRemaining})`;
                         hintBtn.disabled = true; 
-                        saveState(); // 💾 힌트를 소모한 기록도 즉시 저장
+                        saveState(); 
                     }
                 };
             } else {
@@ -922,6 +1030,7 @@
             if (isFullyCorrect) {
                 score++; 
                 currentCombo++; 
+                playCorrect(); // 🎵 정답 사운드
                 triggerComboAnimation();
                 disableQuizUI();
                 
@@ -932,6 +1041,7 @@
                 setTimeout(goToNextQuestion, 1500);
             } else {
                 disableQuizUI();
+                playWrong(); // 🎵 오답 사운드
                 triggerShake(); 
                 currentLives--; 
                 currentCombo = 0; 
@@ -974,24 +1084,50 @@
             }
         }
         
-        function showGameOver() {
-            clearState(); // 💾 게임 오버 시 찌꺼기 메모리 청소
+        async function showGameOver() {
+            playGameOver(); // 🎵 게임 오버 사운드
+            clearState(); 
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
             resultEl.innerHTML = `<span style="color:#e74c3c">💀 게임 오버!</span><br><span style="font-size:1.3rem">하트를 모두 소진했습니다.</span><br><br>현재까지 총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.`;
             restartBtn.style.display = "block";
+            
+            // 📊 통계 DB에 기록 전송 (실패)
+            try { await supabase.from('play_logs').insert([{ score: score, is_clear: false }]); } catch(e){}
         }
 
-        function showResult() {
-            clearState(); // 💾 완주 성공 시 찌꺼기 메모리 청소
+        async function showResult() {
+            playClear(); // 🎵 클리어 사운드
+            clearState(); 
             quizDiv.style.display = "none";
             resultEl.style.display = "block";
             const bonusText = inHiddenStage ? "<br><span style='color:#8e44ad; font-size:1.1rem;'>(🚪 비밀의 방 문제 포함)</span>" : "";
             resultEl.innerHTML = `🎉 🧗‍♂️ 등반 완료! 수고하셨습니다.<br>총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.${bonusText}`;
             restartBtn.style.display = "block";
+            
+            // 📊 통계 DB에 기록 전송 (성공)
+            try { await supabase.from('play_logs').insert([{ score: score, is_clear: true }]); } catch(e){}
         }
         
         restartBtn.onclick = initStartScreen;
+        
+        // 📊 통계 데이터 긁어오기 (다중 기기 실시간 동기화)
+        async function fetchAdminStats() {
+            try {
+                const { data, error } = await supabase.from('play_logs').select('score, is_clear');
+                if (error) throw error;
+                
+                const total = data.length;
+                const clear = data.filter(d => d.is_clear).length;
+                const avg = total > 0 ? (data.reduce((acc, d) => acc + d.score, 0) / total).toFixed(1) : 0;
+                
+                document.getElementById('stat-total').innerText = `${total}명`;
+                document.getElementById('stat-clear').innerText = `${clear}명`;
+                document.getElementById('stat-avg').innerText = `${avg}점`;
+            } catch(e) {
+                console.error("통계 로드 실패:", e);
+            }
+        }
         
         function updatePreview() {
             const q = document.getElementById("new-question").value || "질문이 입력되면 여기에 보입니다.";
@@ -1048,6 +1184,7 @@
         document.getElementById("options-wrapper").addEventListener("input", updatePreview);
 
         adminBtn.onclick = () => { 
+            initAudio(); // 🎵 관리자 진입 시에도 사운드 권한 확보
             pwModal.style.display = "flex"; 
             pwInput.value = ""; 
             document.body.style.overflow = "hidden"; 
@@ -1058,7 +1195,7 @@
             document.body.style.overflow = "auto"; 
         };
 
-        // 🔒 솔루션 2: Supabase 서버 사이드 보안 검증 적용
+        // 🔒 Supabase 서버 사이드 비밀번호 검증 (해킹 원천 차단)
         document.getElementById("pw-submit-btn").onclick = async () => {
             const enteredPw = pwInput.value;
             const btn = document.getElementById("pw-submit-btn");
@@ -1066,7 +1203,6 @@
             btn.disabled = true;
 
             try {
-                // F12에 비밀번호를 남기지 않고 오직 Supabase에 물어보기만 합니다.
                 const { data, error } = await supabase.rpc('check_admin_pw', { input_pw: enteredPw });
                 if (error) throw error;
 
@@ -1075,11 +1211,15 @@
                     adminModal.style.display = "flex";
                     resetForm(); 
                     renderAdminList();
+                    
+                    // 📊 통계 초기 로드 및 3초마다 갱신 (실시간 동기화)
+                    fetchAdminStats();
+                    adminStatsInterval = setInterval(fetchAdminStats, 3000);
                 } else {
                     alert("비밀번호가 틀렸습니다.");
                 }
             } catch (err) {
-                alert("서버 통신 오류: " + err.message + "\n(※ Supabase SQL Editor에서 check_admin_pw 함수를 생성했는지 확인해주세요!)");
+                alert("서버 통신 오류: " + err.message + "\n(※ Supabase SQL Editor에서 check_admin_pw 및 play_logs 테이블을 생성했는지 확인해주세요!)");
             } finally {
                 btn.innerText = "확인";
                 btn.disabled = false;
@@ -1089,6 +1229,7 @@
         document.getElementById("close-admin-btn").onclick = () => {
             adminModal.style.display = "none";
             document.body.style.overflow = "auto"; 
+            clearInterval(adminStatsInterval); // 창 닫으면 통계 갱신 멈춤
             resetForm();
             fetchQuizzes(); 
         };
@@ -1421,7 +1562,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=12') 
+                navigator.serviceWorker.register('sw.js?v=13') 
                     .then(registration => { console.log('ServiceWorker 등록 성공:', registration.scope); })
                     .catch(error => { console.log('ServiceWorker 등록 실패:', error); });
             });
