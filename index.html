@@ -548,9 +548,20 @@
                 </div>
             </div>
 
+            <h3 style="margin-bottom: 10px; color: #2c3e50;">📚 문제 관리</h3>
             <div class="quiz-list-container" id="quiz-list"></div>
 
-            <div id="edit-mode-indicator">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: 30px;">
+                <h3 style="margin: 0; color: #2c3e50;">🏆 랭킹 관리</h3>
+                <div>
+                    <button id="delete-selected-rank-btn" class="btn" style="background-color: #e67e22; padding: 5px 10px; font-size: 0.9rem; width: auto; margin: 0;">선택 삭제</button>
+                    <button id="delete-all-rank-btn" class="btn" style="background-color: #e74c3c; padding: 5px 10px; font-size: 0.9rem; width: auto; margin: 0 0 0 5px;">전체 삭제</button>
+                </div>
+            </div>
+            <div class="quiz-list-container" id="admin-ranking-list" style="max-height: 200px; background: #fffaf0; border: 1px solid #f39c12;">
+                </div>
+
+            <div id="edit-mode-indicator" style="margin-top: 30px;">
                 <span>⚠️ 현재 퀴즈를 <strong>수정 중</strong>입니다.</span>
                 <button type="button" id="cancel-edit-btn" class="btn" style="width: auto; margin: 0; padding: 5px 15px; background-color: #e74c3c;">수정 취소</button>
             </div>
@@ -714,6 +725,7 @@
         const adminModal = document.getElementById("admin-modal");
         const pwInput = document.getElementById("admin-pw");
         const quizListEl = document.getElementById("quiz-list");
+        const adminRankingListEl = document.getElementById("admin-ranking-list");
         
         const addQuizBtn = document.getElementById("add-quiz-btn");
         const optionsWrapper = document.getElementById("options-wrapper");
@@ -1199,7 +1211,7 @@
         
         restartBtn.onclick = initStartScreen;
 
-        // 🔄 0.1초 단위 랭킹 새로고침 로직 (락 적용)
+        // 🔄 0.1초 단위 랭킹 새로고침 로직 (락 적용) - 일반 유저 화면용
         let isFetchingRankings = false;
         async function fetchRankings() {
             if (isFetchingRankings) return;
@@ -1223,6 +1235,30 @@
                 }
             } catch(e) {}
             isFetchingRankings = false;
+        }
+
+        // 🏆 관리자용 랭킹 리스트 불러오기 (체크박스 포함, 창 열 때/삭제 시에만 작동)
+        async function fetchAdminRankings() {
+            try {
+                const { data, error } = await supabase.from('rankings').select('id, name, score').order('score', { ascending: false });
+                if (!error && data) {
+                    let html = "";
+                    data.forEach((r, idx) => {
+                        html += `
+                        <div class="quiz-item" style="padding: 10px 15px;">
+                            <label style="display: flex; align-items: center; gap: 15px; cursor: pointer; width: 100%;">
+                                <input type="checkbox" class="admin-rank-cb" value="${r.id}" style="width: 20px; height: 20px;">
+                                <div style="flex-grow: 1;"><strong>${idx + 1}위</strong> ${r.name}</div>
+                                <div style="color: #e74c3c; font-weight: bold;">${r.score}점</div>
+                            </label>
+                        </div>`;
+                    });
+                    if (data.length === 0) html = "<div style='padding:15px;'>등록된 랭킹이 없습니다.</div>";
+                    adminRankingListEl.innerHTML = html;
+                }
+            } catch (e) {
+                console.error("관리자 랭킹 불러오기 실패:", e);
+            }
         }
         
         // 📊 0.1초 단위 관리자 통계 새로고침 로직 (락 적용)
@@ -1260,6 +1296,41 @@
                     alert("운영 통계가 완전히 초기화되었습니다.");
                 } catch(err) {
                     alert("초기화 실패! 원인: " + err.message);
+                }
+            }
+        };
+
+        // 🗑️ 관리자: 랭킹 선택 삭제 버튼
+        document.getElementById("delete-selected-rank-btn").onclick = async () => {
+            const checkedBoxes = document.querySelectorAll(".admin-rank-cb:checked");
+            if(checkedBoxes.length === 0) {
+                alert("삭제할 랭킹을 하나 이상 선택해주세요.");
+                return;
+            }
+            
+            if(confirm(`선택한 ${checkedBoxes.length}개의 랭킹 기록을 정말 삭제하시겠습니까?`)) {
+                const idsToDelete = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                try {
+                    const { error } = await supabase.from('rankings').delete().in('id', idsToDelete);
+                    if (error) throw error;
+                    alert("선택한 랭킹 기록이 삭제되었습니다.");
+                    fetchAdminRankings(); // 관리자 랭킹 목록 재로딩
+                } catch(err) {
+                    alert("삭제 실패: " + err.message);
+                }
+            }
+        };
+
+        // 🗑️ 관리자: 랭킹 전체 삭제 버튼
+        document.getElementById("delete-all-rank-btn").onclick = async () => {
+            if(confirm("⚠️ 경고: 정말 '모든 랭킹 기록'을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!")) {
+                try {
+                    const { error } = await supabase.from('rankings').delete().gt('id', -1);
+                    if (error) throw error;
+                    alert("명예의 전당의 모든 랭킹 기록이 초기화되었습니다.");
+                    fetchAdminRankings(); // 관리자 랭킹 목록 재로딩
+                } catch(err) {
+                    alert("전체 삭제 실패: " + err.message);
                 }
             }
         };
@@ -1345,6 +1416,7 @@
                     adminModal.style.display = "flex";
                     resetForm(); 
                     renderAdminList();
+                    fetchAdminRankings(); // 관리자 창 열 때 랭킹 목록 새로고침
                 } else {
                     alert("비밀번호가 틀렸습니다.");
                 }
