@@ -678,9 +678,9 @@
             playTone(200, 'sawtooth', 0.6, 0.2, 0.6);
         }
 
+        // ======================= DOM 요소 & 변수 선언 =======================
         const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bnR4anNic3d5aHVtZ253bm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2Nzg0MDksImV4cCI6MjA5OTI1NDQwOX0.dD5xhlttjYwcnD2qdRzQCtQyDDa973A3-JppmNSSGnA';
-        
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let allQuizzes = []; 
@@ -704,10 +704,13 @@
 
         let editingQuizId = null;
         let existingImageUrl = "";
+        let optionCount = 0;
 
-        // 🏆 랭킹 플레이어 이름 관리 (이전 저장 기록 불러오기)
-        let playerName = localStorage.getItem('playerName') || "";
+        // 🏆 랭킹 플레이어 이름 관리 (로컬 스토리지 충돌 방지 블록 처리)
+        let playerName = "";
+        try { playerName = localStorage.getItem('playerName') || ""; } catch(e) {}
 
+        const adminBtn = document.getElementById("admin-btn");
         const loadingEl = document.getElementById("loading");
         const startScreenEl = document.getElementById("start-screen"); 
         const startBtn = document.getElementById("start-btn"); 
@@ -720,7 +723,6 @@
         const registerRankingContainer = document.getElementById("register-ranking-container");
         const restartBtn = document.getElementById("restart");
 
-        const adminBtn = document.getElementById("admin-btn");
         const pwModal = document.getElementById("password-modal");
         const adminModal = document.getElementById("admin-modal");
         const pwInput = document.getElementById("admin-pw");
@@ -732,9 +734,55 @@
         const addOptionBtn = document.getElementById("add-option-btn");
         const cancelEditBtn = document.getElementById("cancel-edit-btn");
         const editModeIndicator = document.getElementById("edit-mode-indicator");
-        let optionCount = 0;
 
-        // 🏆 게임 최종 화면에서 이름 등록 로직
+        // ======================= 관리자 모드 열기 이벤트 안전하게 최상단 배치 =======================
+        adminBtn.onclick = () => { 
+            initAudio(); 
+            pwModal.style.display = "flex"; 
+            pwInput.value = ""; 
+            document.body.style.overflow = "hidden"; 
+        };
+
+        document.getElementById("pw-cancel-btn").onclick = () => { 
+            pwModal.style.display = "none"; 
+            document.body.style.overflow = "auto"; 
+        };
+
+        document.getElementById("pw-submit-btn").onclick = async () => {
+            const enteredPw = pwInput.value;
+            const btn = document.getElementById("pw-submit-btn");
+            btn.innerText = "확인 중...";
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabase.rpc('check_admin_pw', { input_pw: enteredPw });
+                if (error) throw error;
+
+                if (data === true) {
+                    pwModal.style.display = "none";
+                    adminModal.style.display = "flex";
+                    resetForm(); 
+                    renderAdminList();
+                    fetchAdminRankings(); // 관리자 창 열 때 랭킹 목록 새로고침
+                } else {
+                    alert("비밀번호가 틀렸습니다.");
+                }
+            } catch (err) {
+                alert("서버 통신 오류: " + err.message + "\n(※ Supabase SQL Editor에서 check_admin_pw 및 play_logs 테이블을 생성했는지 확인해주세요!)");
+            } finally {
+                btn.innerText = "확인";
+                btn.disabled = false;
+            }
+        };
+
+        document.getElementById("close-admin-btn").onclick = () => {
+            adminModal.style.display = "none";
+            document.body.style.overflow = "auto"; 
+            resetForm();
+            fetchQuizzes(); 
+        };
+
+        // ======================= 🏆 게임 최종 화면 이름 등록 로직 =======================
         const nameInput = document.getElementById("player-name-input");
         if(playerName) nameInput.value = playerName;
 
@@ -754,9 +802,9 @@
                 alert(`[${val}] 님의 기록(${score}점)이 명예의 전당에 등록되었습니다!`);
                 
                 playerName = val;
-                localStorage.setItem('playerName', val);
+                try { localStorage.setItem('playerName', val); } catch(e) {}
                 
-                // 등록 완료 후 등록창 숨기기 방지(중복 등록 방지)
+                // 등록 완료 후 등록창 숨기기
                 registerRankingContainer.style.display = "none";
             } catch (e) {
                 alert("랭킹 등록에 실패했습니다: " + e.message);
@@ -765,6 +813,7 @@
             }
         };
 
+        // ======================= 게임 로직 =======================
         function saveState() {
             const state = {
                 playQueue: currentPlayQueue,
@@ -777,11 +826,11 @@
                 targetEndTime: targetEndTime,
                 initialTimeForBar: initialTimeForBar
             };
-            localStorage.setItem('mountainQuizState', JSON.stringify(state));
+            try { localStorage.setItem('mountainQuizState', JSON.stringify(state)); } catch(e) {}
         }
 
         function clearState() {
-            localStorage.removeItem('mountainQuizState');
+            try { localStorage.removeItem('mountainQuizState'); } catch(e) {}
         }
 
         function shuffleArray(array) {
@@ -811,7 +860,9 @@
         }
 
         function checkSavedState() {
-            const saved = localStorage.getItem('mountainQuizState');
+            let saved = null;
+            try { saved = localStorage.getItem('mountainQuizState'); } catch(e) {}
+            
             if (saved) {
                 try {
                     const state = JSON.parse(saved);
@@ -843,7 +894,7 @@
                     loadQuestion(true); 
                     return;
                 } catch (e) {
-                    console.error("저장된 상태를 불러오는 데 실패했습니다.", e);
+                    console.error("상태 파싱 실패", e);
                     clearState();
                 }
             }
@@ -880,7 +931,7 @@
             startQuiz();
         };
 
-        // 🏠 처음으로 가기 로직
+        // 🏠 처음으로 가기
         document.getElementById("go-home-btn").onclick = () => {
             if(confirm("정말 처음 화면으로 돌아가시겠습니까? 진행 중인 기록은 모두 사라집니다.")) {
                 clearInterval(timerInterval);
@@ -1161,13 +1212,13 @@
             }
         }
 
-        // 🏆 현재 내 점수로 예상 순위 계산 (DB 조회)
+        // 🏆 현재 내 점수로 예상 순위 계산
         async function getExpectedRank(finalScore) {
             try {
                 const { count, error } = await supabase.from('rankings').select('*', { count: 'exact', head: true }).gt('score', finalScore);
                 if(!error) return (count || 0) + 1;
             } catch(e) {}
-            return "?"; // 오류 시
+            return "?"; 
         }
         
         async function showGameOver() {
@@ -1180,7 +1231,6 @@
             resultEl.style.display = "block";
             resultEl.innerHTML = `<span style="color:#e74c3c">💀 게임 오버!</span><br><span style="font-size:1.3rem">하트를 모두 소진했습니다.</span><br><br>현재까지 총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.<br><div style="margin-top:15px; font-size:1.5rem; color:#3498db;">당신의 랭킹은 <strong>${myRank}</strong>위 입니다.</div>`;
             
-            // 랭킹 등록창 띄우기
             registerRankingContainer.style.display = "block";
             document.getElementById("register-name-btn").disabled = false;
             document.getElementById("register-name-btn").innerText = "등록하기";
@@ -1200,7 +1250,6 @@
             const bonusText = inHiddenStage ? "<br><span style='color:#8e44ad; font-size:1.1rem;'>(🚪 비밀의 방 문제 포함)</span>" : "";
             resultEl.innerHTML = `🎉 🧗‍♂️ 등반 완료! 수고하셨습니다.<br>총 <span style="color:#2ecc71">${score}</span>문제를 맞췄습니다.${bonusText}<br><div style="margin-top:15px; font-size:1.5rem; color:#3498db;">당신의 랭킹은 <strong>${myRank}</strong>위 입니다.</div>`;
             
-            // 랭킹 등록창 띄우기
             registerRankingContainer.style.display = "block";
             document.getElementById("register-name-btn").disabled = false;
             document.getElementById("register-name-btn").innerText = "등록하기";
@@ -1211,11 +1260,8 @@
         
         restartBtn.onclick = initStartScreen;
 
-        // 🔄 0.1초 단위 랭킹 새로고침 로직 (락 적용) - 일반 유저 화면용
-        let isFetchingRankings = false;
-        async function fetchRankings() {
-            if (isFetchingRankings) return;
-            isFetchingRankings = true;
+        // ======================= 🔄 브라우저 렉(충돌) 방지 1초 단위 안전 갱신 로직 =======================
+        async function fetchRankingsLoop() {
             try {
                 const { data, error } = await supabase.from('rankings').select('name, score').order('score', { ascending: false }).limit(50);
                 if (!error && data) {
@@ -1231,13 +1277,36 @@
                                  </div>`;
                     });
                     if (data.length === 0) html = "아직 등록된 랭킹이 없습니다.";
-                    document.getElementById("current-ranking-list").innerHTML = html;
+                    const listEl = document.getElementById("current-ranking-list");
+                    if (listEl) listEl.innerHTML = html;
                 }
             } catch(e) {}
-            isFetchingRankings = false;
+            // 통신 완료 후 1초 대기 (네트워크 과부하 방지)
+            setTimeout(fetchRankingsLoop, 1000); 
         }
 
-        // 🏆 관리자용 랭킹 리스트 불러오기 (체크박스 포함, 창 열 때/삭제 시에만 작동)
+        async function fetchAdminStatsLoop() {
+            try {
+                const { data, error } = await supabase.from('play_logs').select('score, is_clear');
+                if (!error && data) {
+                    const total = data.length;
+                    const clear = data.filter(d => d.is_clear).length;
+                    const avg = total > 0 ? (data.reduce((acc, d) => acc + d.score, 0) / total).toFixed(1) : 0;
+                    
+                    document.getElementById('stat-total').innerText = `${total}명`;
+                    document.getElementById('stat-clear').innerText = `${clear}명`;
+                    document.getElementById('stat-avg').innerText = `${avg}점`;
+                }
+            } catch(e) {}
+            // 통신 완료 후 1초 대기
+            setTimeout(fetchAdminStatsLoop, 1000);
+        }
+
+        // 루프 최초 실행
+        fetchRankingsLoop();
+        fetchAdminStatsLoop();
+
+        // ======================= 관리자 통계 및 랭킹 관리 =======================
         async function fetchAdminRankings() {
             try {
                 const { data, error } = await supabase.from('rankings').select('id, name, score').order('score', { ascending: false });
@@ -1261,33 +1330,6 @@
             }
         }
         
-        // 📊 0.1초 단위 관리자 통계 새로고침 로직 (락 적용)
-        let isFetchingStats = false;
-        async function fetchAdminStats() {
-            if (isFetchingStats) return;
-            isFetchingStats = true;
-            try {
-                const { data, error } = await supabase.from('play_logs').select('score, is_clear');
-                if (!error && data) {
-                    const total = data.length;
-                    const clear = data.filter(d => d.is_clear).length;
-                    const avg = total > 0 ? (data.reduce((acc, d) => acc + d.score, 0) / total).toFixed(1) : 0;
-                    
-                    document.getElementById('stat-total').innerText = `${total}명`;
-                    document.getElementById('stat-clear').innerText = `${clear}명`;
-                    document.getElementById('stat-avg').innerText = `${avg}점`;
-                }
-            } catch(e) {
-                console.error("통계 로드 실패:", e);
-            }
-            isFetchingStats = false;
-        }
-        
-        // 🔥 0.1초(100ms)마다 새로고침 타이머 작동
-        setInterval(fetchRankings, 100);
-        setInterval(fetchAdminStats, 100);
-        
-        // 🔄 통계 초기화 리셋 버튼
         document.getElementById("reset-stats-btn").onclick = async () => {
             if(confirm("정말 모든 통계 데이터(참여 인원, 완주, 평균 점수)를 초기화하시겠습니까?\n※ 퀴즈 문제는 삭제되지 않습니다.")) {
                 try {
@@ -1300,7 +1342,6 @@
             }
         };
 
-        // 🗑️ 관리자: 랭킹 선택 삭제 버튼
         document.getElementById("delete-selected-rank-btn").onclick = async () => {
             const checkedBoxes = document.querySelectorAll(".admin-rank-cb:checked");
             if(checkedBoxes.length === 0) {
@@ -1314,27 +1355,27 @@
                     const { error } = await supabase.from('rankings').delete().in('id', idsToDelete);
                     if (error) throw error;
                     alert("선택한 랭킹 기록이 삭제되었습니다.");
-                    fetchAdminRankings(); // 관리자 랭킹 목록 재로딩
+                    fetchAdminRankings(); 
                 } catch(err) {
                     alert("삭제 실패: " + err.message);
                 }
             }
         };
 
-        // 🗑️ 관리자: 랭킹 전체 삭제 버튼
         document.getElementById("delete-all-rank-btn").onclick = async () => {
             if(confirm("⚠️ 경고: 정말 '모든 랭킹 기록'을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!")) {
                 try {
                     const { error } = await supabase.from('rankings').delete().gt('id', -1);
                     if (error) throw error;
                     alert("명예의 전당의 모든 랭킹 기록이 초기화되었습니다.");
-                    fetchAdminRankings(); // 관리자 랭킹 목록 재로딩
+                    fetchAdminRankings(); 
                 } catch(err) {
                     alert("전체 삭제 실패: " + err.message);
                 }
             }
         };
 
+        // ======================= 관리자 퀴즈 등록/수정/미리보기 로직 =======================
         function updatePreview() {
             const q = document.getElementById("new-question").value || "질문이 입력되면 여기에 보입니다.";
             document.getElementById("preview-q").innerText = q;
@@ -1389,61 +1430,13 @@
         document.getElementById("new-image").addEventListener("change", updatePreview);
         document.getElementById("options-wrapper").addEventListener("input", updatePreview);
 
-        adminBtn.onclick = () => { 
-            initAudio(); 
-            pwModal.style.display = "flex"; 
-            pwInput.value = ""; 
-            document.body.style.overflow = "hidden"; 
-        };
-        
-        document.getElementById("pw-cancel-btn").onclick = () => { 
-            pwModal.style.display = "none"; 
-            document.body.style.overflow = "auto"; 
-        };
-
-        document.getElementById("pw-submit-btn").onclick = async () => {
-            const enteredPw = pwInput.value;
-            const btn = document.getElementById("pw-submit-btn");
-            btn.innerText = "확인 중...";
-            btn.disabled = true;
-
-            try {
-                const { data, error } = await supabase.rpc('check_admin_pw', { input_pw: enteredPw });
-                if (error) throw error;
-
-                if (data === true) {
-                    pwModal.style.display = "none";
-                    adminModal.style.display = "flex";
-                    resetForm(); 
-                    renderAdminList();
-                    fetchAdminRankings(); // 관리자 창 열 때 랭킹 목록 새로고침
-                } else {
-                    alert("비밀번호가 틀렸습니다.");
-                }
-            } catch (err) {
-                alert("서버 통신 오류: " + err.message + "\n(※ Supabase SQL Editor에서 check_admin_pw 및 play_logs 테이블을 생성했는지 확인해주세요!)");
-            } finally {
-                btn.innerText = "확인";
-                btn.disabled = false;
-            }
-        };
-
-        document.getElementById("close-admin-btn").onclick = () => {
-            adminModal.style.display = "none";
-            document.body.style.overflow = "auto"; 
-            resetForm();
-            fetchQuizzes(); 
-        };
-
         function renderAdminList() {
             quizListEl.innerHTML = "";
-            
             const totalQuizzes = [...allQuizzes, ...hiddenQuizzes];
             if (totalQuizzes.length === 0) {
                 quizListEl.innerHTML = "<p>등록된 퀴즈가 없습니다.</p>";
                 return;
             }
-            
             totalQuizzes.forEach((q) => {
                 const div = document.createElement("div");
                 div.className = "quiz-item";
@@ -1519,7 +1512,6 @@
             addQuizBtn.style.backgroundColor = "#f39c12"; 
             
             updatePreview();
-
             document.querySelector('.admin-panel').scrollTo({ top: 0, behavior: 'smooth' });
         }
 
