@@ -802,10 +802,14 @@
         updateDeviceBtnText();
 
         deviceSetupBtn.onclick = () => {
-            let val = prompt("이 기기의 번호를 숫자로 입력하세요 (예: 1, 2)\n※ 스태프 관리자용 기기인 경우 'admin' 이라고 입력하세요.");
+            let val = prompt("이 기기의 번호를 숫자로 입력하세요 (예: 1, 2)\n※ 스태프 관리자용 기기인 경우 'admin' 이라고 입력하세요.\n※ 설정을 초기화(미지정)하려면 'no'라고 입력하세요.");
             if(val !== null && val.trim() !== "") {
-                localStorage.setItem('myDeviceId', val.trim());
-                myDeviceId = val.trim();
+                let inputVal = val.trim();
+                if(inputVal.toLowerCase() === 'no') {
+                    inputVal = '0';
+                }
+                localStorage.setItem('myDeviceId', inputVal);
+                myDeviceId = inputVal;
                 updateDeviceBtnText();
                 location.reload();
             }
@@ -944,9 +948,17 @@
         // ======================= 관리자 모드 열기 이벤트 =======================
         adminBtn.onclick = () => { 
             initAudio(); 
-            pwModal.style.display = "flex"; 
-            pwInput.value = ""; 
-            document.body.style.overflow = "hidden"; 
+            if (myDeviceId === 'admin') {
+                adminModal.style.display = "flex";
+                document.body.style.overflow = "hidden";
+                resetForm(); 
+                renderAdminList();
+                fetchAdminRankings();
+            } else {
+                pwModal.style.display = "flex"; 
+                pwInput.value = ""; 
+                document.body.style.overflow = "hidden"; 
+            }
         };
 
         document.getElementById("pw-cancel-btn").onclick = () => { 
