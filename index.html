@@ -50,6 +50,21 @@
         }
         #admin-btn:hover { background-color: #2c3e50; }
 
+        /* 🖼️ 좌측 하단 기기 설정 버튼 */
+        #device-setup-btn {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.4);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        #device-setup-btn:hover { background: rgba(0,0,0,0.7); }
+
         /* 🖼️ 우측 하단 아주 작은 로고 */
         #bottom-right-logo {
             position: fixed;
@@ -462,6 +477,7 @@
 <body>
 
     <button id="admin-btn">⚙️ 관리자</button>
+    <div id="device-setup-btn">기기: 미지정 (클릭)</div>
 
     <!-- 우측 하단 작은 로고 아이콘 추가 -->
     <img src="1000001150.png" id="bottom-right-logo" alt="logo">
@@ -572,6 +588,31 @@
                 <div>
                     <div class="stat-box-title">평균 획득 점수</div>
                     <div id="stat-avg" class="stat-box-val" style="color: #f39c12;">0점</div>
+                </div>
+            </div>
+
+            <!-- 📡 실시간 기기 제어 패널 추가 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: 30px;">
+                <h3 style="margin: 0; color: #2c3e50;">📡 실시간 기기 제어</h3>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <!-- 1번 기기 -->
+                <div style="flex: 1; min-width: 250px; background: #eaf2f8; padding: 15px; border-radius: 8px; border: 2px solid #3498db;">
+                    <h4 style="margin-top: 0; color: #2980b9;">📱 1번 기기</h4>
+                    <p style="font-size: 0.95rem; margin-bottom: 10px;">상태: <strong id="status-dev-1" style="color: #e74c3c;">연결 끊김 (오프라인)</strong></p>
+                    <div style="display: flex; gap: 5px;">
+                        <button type="button" id="ctrl-reset-1" class="btn" style="padding: 8px; font-size: 0.9rem; margin: 0;">🔄 원격 초기화</button>
+                        <button type="button" id="ctrl-popup-1" class="btn" style="padding: 8px; font-size: 0.9rem; margin: 0; background-color: #9b59b6;">💬 팝업 띄우기</button>
+                    </div>
+                </div>
+                <!-- 2번 기기 -->
+                <div style="flex: 1; min-width: 250px; background: #eaf2f8; padding: 15px; border-radius: 8px; border: 2px solid #3498db;">
+                    <h4 style="margin-top: 0; color: #2980b9;">📱 2번 기기</h4>
+                    <p style="font-size: 0.95rem; margin-bottom: 10px;">상태: <strong id="status-dev-2" style="color: #e74c3c;">연결 끊김 (오프라인)</strong></p>
+                    <div style="display: flex; gap: 5px;">
+                        <button type="button" id="ctrl-reset-2" class="btn" style="padding: 8px; font-size: 0.9rem; margin: 0;">🔄 원격 초기화</button>
+                        <button type="button" id="ctrl-popup-2" class="btn" style="padding: 8px; font-size: 0.9rem; margin: 0; background-color: #9b59b6;">💬 팝업 띄우기</button>
+                    </div>
                 </div>
             </div>
 
@@ -761,6 +802,114 @@
         const cancelEditBtn = document.getElementById("cancel-edit-btn");
         const editModeIndicator = document.getElementById("edit-mode-indicator");
 
+        // ======================= 📡 기기 역할 부여 (Device ID) =======================
+        let myDeviceId = localStorage.getItem('myDeviceId') || '0';
+        const deviceSetupBtn = document.getElementById('device-setup-btn');
+        
+        function updateDeviceBtnText() {
+            if(myDeviceId === '0') deviceSetupBtn.innerText = '기기: 미지정 (클릭)';
+            else if(myDeviceId === 'admin') deviceSetupBtn.innerText = '[ 스태프용 기기 ]';
+            else deviceSetupBtn.innerText = `[ ${myDeviceId}번 기기 ]`;
+        }
+        updateDeviceBtnText();
+
+        deviceSetupBtn.onclick = () => {
+            let val = prompt("이 기기의 번호를 숫자로 입력하세요 (예: 1, 2)\n※ 스태프 관리자용 기기인 경우 'admin' 이라고 입력하세요.");
+            if(val !== null && val.trim() !== "") {
+                localStorage.setItem('myDeviceId', val.trim());
+                myDeviceId = val.trim();
+                updateDeviceBtnText();
+                location.reload();
+            }
+        };
+
+        // ======================= 📡 Supabase Realtime 원격 제어 =======================
+        const realtimeChannel = supabase.channel('booth-control', {
+            config: { broadcast: { self: true } }
+        });
+
+        let lastSeen = { '1': 0, '2': 0 };
+
+        realtimeChannel
+            .on('broadcast', { event: 'status_update' }, (payload) => {
+                const data = payload.payload;
+                lastSeen[data.device] = Date.now();
+                const el = document.getElementById(`status-dev-${data.device}`);
+                if (el) {
+                    el.innerText = data.status;
+                    el.style.color = '#27ae60'; // 초록색(온라인)
+                }
+            })
+            .on('broadcast', { event: 'command' }, (payload) => {
+                const data = payload.payload;
+                // 나에게 온 명령이거나, 전체 명령일 때 수행
+                if (data.targetDevice === myDeviceId || data.targetDevice === 'all') {
+                    if (data.command === 'reset') {
+                        clearState();
+                        location.reload(); // 강제 리셋
+                    } else if (data.command === 'popup') {
+                        alert(`[관리자 메시지]\n${data.message}`);
+                    }
+                }
+            })
+            .subscribe((status) => {
+                if(status === 'SUBSCRIBED') {
+                    // 내가 퀴즈용 태블릿(1, 2 등)이라면 1초마다 내 상태를 방송함
+                    if (myDeviceId !== 'admin' && myDeviceId !== '0') {
+                        setInterval(() => {
+                            let statusMsg = '대기 중 (시작 화면)';
+                            const idleOverlay = document.getElementById("idle-warning-overlay");
+                            
+                            if (idleOverlay && idleOverlay.style.display === 'flex') {
+                                statusMsg = `초기화 경고 중 (${document.getElementById("idle-countdown").innerText}초 전)`;
+                            } else if (resultEl.style.display === 'block') {
+                                statusMsg = `결과 화면 (점수: ${score}점)`;
+                            } else if (startScreenEl.style.display === 'none') {
+                                statusMsg = `문제 푸는 중 (Q${currentQuestionIndex + 1} / 점수: ${score}점)`;
+                            }
+                            
+                            realtimeChannel.send({
+                                type: 'broadcast',
+                                event: 'status_update',
+                                payload: { device: myDeviceId, status: statusMsg }
+                            });
+                        }, 1000);
+                    }
+                }
+            });
+
+        // 어드민 오프라인 체크 (3초 이상 응답 없으면 연결 끊김 처리)
+        setInterval(() => {
+            const now = Date.now();
+            ['1', '2'].forEach(id => {
+                const el = document.getElementById(`status-dev-${id}`);
+                if (el && now - lastSeen[id] > 3000) {
+                    el.innerText = '연결 끊김 (오프라인)';
+                    el.style.color = '#e74c3c';
+                }
+            });
+        }, 1000);
+
+        // 어드민 원격 제어 버튼 동작 연결
+        function sendCommand(target, cmd, msg='') {
+            realtimeChannel.send({
+                type: 'broadcast',
+                event: 'command',
+                payload: { targetDevice: target, command: cmd, message: msg }
+            });
+            if(cmd === 'reset') alert(`📡 ${target}번 기기에 원격 초기화 명령을 전송했습니다.`);
+        }
+
+        function sendPopup(target) {
+            const msg = prompt(`📱 ${target}번 기기 화면 한가운데에 띄울 팝업 메시지를 입력하세요:`);
+            if (msg && msg.trim() !== '') sendCommand(target, 'popup', msg.trim());
+        }
+
+        document.getElementById('ctrl-reset-1').addEventListener('click', () => sendCommand('1', 'reset'));
+        document.getElementById('ctrl-popup-1').addEventListener('click', () => sendPopup('1'));
+        document.getElementById('ctrl-reset-2').addEventListener('click', () => sendCommand('2', 'reset'));
+        document.getElementById('ctrl-popup-2').addEventListener('click', () => sendPopup('2'));
+
         // ======================= 🔄 무인 자동 초기화 (Kiosk Idle Reset) =======================
         let idleTimeout;
         let countdownInterval;
@@ -774,13 +923,11 @@
             const idleCountdownText = document.getElementById("idle-countdown");
             if (idleOverlay) idleOverlay.style.display = "none";
 
-            // 30초 대기 타이머 시작
             idleTimeout = setTimeout(() => {
                 const startScreenEl = document.getElementById("start-screen");
                 const adminModal = document.getElementById("admin-modal");
                 const pwModal = document.getElementById("password-modal");
 
-                // 시작 화면이 꺼져있고, 관리자/비번 모달창이 안 떠 있을 때만 발동
                 const isPlaying = startScreenEl.style.display === "none" && 
                                   adminModal.style.display !== "flex" && 
                                   pwModal.style.display !== "flex";
@@ -796,21 +943,19 @@
 
                         if (countdownValue <= 0) {
                             clearInterval(countdownInterval);
-                            clearState(); // 캐시 지우고 처음으로
+                            clearState(); 
                             location.reload(); 
                         }
                     }, 1000);
                 }
-            }, 30000); // 30초
+            }, 30000); 
         }
 
         document.getElementById("idle-cancel-btn").addEventListener("click", resetIdleTimer);
-        // mousemove를 빼고 실제 터치(클릭)만 감지하도록 하여, 스치기만 해도 리셋되는 버그 방지
         ['mousedown', 'touchstart', 'keydown'].forEach(evt => {
             document.addEventListener(evt, resetIdleTimer);
         });
-
-        resetIdleTimer(); // 최초 실행
+        resetIdleTimer();
 
         // ======================= 관리자 모드 열기 이벤트 =======================
         adminBtn.onclick = () => { 
