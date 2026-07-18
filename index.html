@@ -445,11 +445,25 @@
             font-size: 0.9rem;
         }
         #reset-stats-btn:hover { background-color: #c0392b; }
+
+        /* 🖼️ 우측 하단 로고 스타일 */
+        #bottom-right-logo {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            width: 60px; /* 아주 작게 설정 */
+            height: auto;
+            opacity: 0.6;
+            z-index: 1000;
+            pointer-events: none; /* 클릭 방해 안 함 */
+        }
     </style>
 </head>
 <body>
 
     <button id="admin-btn">⚙️ 관리자</button>
+
+    <img src="1000001150.png" alt="BMSH Logo" id="bottom-right-logo">
 
     <div class="quiz-container">
         <div id="combo-display"></div>
@@ -573,7 +587,7 @@
                             <input type="checkbox" id="new-is-hidden" style="width:20px; height:20px;"> 
                             🚪 비밀의 방 (히든 스테이지) 문제로 지정
                         </label>
-                        <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px; margin-left: 28px;">※ 유저가 힌트를 단 한 번도 쓰지 않고 클리어 시 보너스로 등장합니다.</div>
+                        <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px; margin-left: 28px;">※ 유저가 단 한 문제도 틀리지 않고 클리어 시 보너스로 등장합니다.</div>
                     </div>
 
                     <input type="text" id="new-question" placeholder="질문을 입력하세요">
@@ -1194,11 +1208,12 @@
             if (currentQuestionIndex < currentPlayQueue.length) {
                 loadQuestion(false);
             } 
-            else if (!inHiddenStage && hintsRemaining === 2 && hiddenQuizzes.length > 0) {
+            // 💡 히든 스테이지 진입 조건: 하트를 하나도 안 잃었을 경우 (currentLives === maxLives)
+            else if (!inHiddenStage && currentLives === maxLives && hiddenQuizzes.length > 0) {
                 inHiddenStage = true;
                 quizDiv.style.display = "none";
                 resultEl.style.display = "block";
-                resultEl.innerHTML = `<h2 style="color:#8e44ad; font-size: 2.2rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);">🚪 비밀의 방 입장!</h2><p style="font-size:1.2rem; color:#555;">힌트를 단 한 번도 쓰지 않은 진정한 실력자군요.<br>보너스 문제를 출제합니다!</p>`;
+                resultEl.innerHTML = `<h2 style="color:#8e44ad; font-size: 2.2rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);">🚪 비밀의 방 입장!</h2><p style="font-size:1.2rem; color:#555;">단 한 문제도 틀리지 않은 진정한 실력자군요.<br>보너스 문제를 출제합니다!</p>`;
                 
                 setTimeout(() => {
                     resultEl.style.display = "none";
