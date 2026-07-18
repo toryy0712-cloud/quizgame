@@ -50,6 +50,18 @@
         }
         #admin-btn:hover { background-color: #2c3e50; }
 
+        /* 🖼️ 우측 하단 아주 작은 로고 */
+        #bottom-right-logo {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 40px; 
+            height: auto;
+            z-index: 1000;
+            opacity: 0.7; 
+            pointer-events: none; 
+        }
+
         .quiz-container { 
             position: relative;
             background-color: rgba(255, 255, 255, 0.95); 
@@ -445,25 +457,13 @@
             font-size: 0.9rem;
         }
         #reset-stats-btn:hover { background-color: #c0392b; }
-
-        /* 🖼️ 우측 하단 로고 스타일 */
-        #bottom-right-logo {
-            position: fixed;
-            bottom: 15px;
-            right: 15px;
-            width: 60px; /* 아주 작게 설정 */
-            height: auto;
-            opacity: 0.6;
-            z-index: 1000;
-            pointer-events: none; /* 클릭 방해 안 함 */
-        }
     </style>
 </head>
 <body>
 
     <button id="admin-btn">⚙️ 관리자</button>
 
-    <img src="1000001150.png" alt="BMSH Logo" id="bottom-right-logo">
+    <img src="1000001150.png" id="bottom-right-logo" alt="logo">
 
     <div class="quiz-container">
         <div id="combo-display"></div>
@@ -529,6 +529,15 @@
         <button id="restart" class="btn">처음부터 다시 하기</button>
     </div>
 
+    <div id="idle-warning-overlay" class="modal-overlay" style="z-index: 10000; display: none;">
+        <div class="modal-content" style="border: 4px solid #e74c3c; animation: shake-anim 0.5s;">
+            <h2 style="color: #e74c3c; font-size: 2.2rem; margin-top: 0;">⏳ 시간 초과 알림</h2>
+            <p style="font-size: 1.5rem; font-weight: bold; color: #2c3e50;">부스가 <span id="idle-countdown" style="color: #e74c3c; font-size: 2.8rem;">10</span>초 안에 초기화 됩니다.</p>
+            <p style="font-size: 1.1rem; color: #7f8c8d; margin-bottom: 30px;">계속하시려면 아래 <strong>취소</strong> 버튼을 눌러주세요!</p>
+            <button id="idle-cancel-btn" class="btn" style="background-color: #3498db; font-size: 1.3rem; padding: 15px 30px;">취소 (계속하기)</button>
+        </div>
+    </div>
+
     <div id="password-modal" class="modal-overlay">
         <div class="modal-content">
             <h2>관리자 인증</h2>
@@ -587,7 +596,7 @@
                             <input type="checkbox" id="new-is-hidden" style="width:20px; height:20px;"> 
                             🚪 비밀의 방 (히든 스테이지) 문제로 지정
                         </label>
-                        <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px; margin-left: 28px;">※ 유저가 단 한 문제도 틀리지 않고 클리어 시 보너스로 등장합니다.</div>
+                        <div style="font-size: 0.85rem; color: #7f8c8d; margin-top: 6px; margin-left: 28px;">※ 유저가 단 한 번도 틀리지 않고(하트 3개 유지) 클리어 시 보너스로 등장합니다.</div>
                     </div>
 
                     <input type="text" id="new-question" placeholder="질문을 입력하세요">
@@ -692,7 +701,6 @@
             playTone(200, 'sawtooth', 0.6, 0.2, 0.6);
         }
 
-        // ======================= DOM 요소 & 변수 선언 =======================
         const SUPABASE_URL = 'https://nyntxjsbswyhumgnwnmg.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55bnR4anNic3d5aHVtZ253bm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2Nzg0MDksImV4cCI6MjA5OTI1NDQwOX0.dD5xhlttjYwcnD2qdRzQCtQyDDa973A3-JppmNSSGnA';
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -720,7 +728,6 @@
         let existingImageUrl = "";
         let optionCount = 0;
 
-        // 🏆 랭킹 플레이어 이름 관리 (로컬 스토리지 충돌 방지 블록 처리)
         let playerName = "";
         try { playerName = localStorage.getItem('playerName') || ""; } catch(e) {}
 
@@ -748,6 +755,59 @@
         const addOptionBtn = document.getElementById("add-option-btn");
         const cancelEditBtn = document.getElementById("cancel-edit-btn");
         const editModeIndicator = document.getElementById("edit-mode-indicator");
+
+        // ======================= 🔄 무인 자동 초기화 (Kiosk Idle Reset) =======================
+        let idleTimeout;
+        let countdownInterval;
+        let countdownValue = 10;
+        
+        const idleOverlay = document.getElementById("idle-warning-overlay");
+        const idleCountdownText = document.getElementById("idle-countdown");
+        const idleCancelBtn = document.getElementById("idle-cancel-btn");
+
+        function resetIdleTimer() {
+            clearTimeout(idleTimeout);
+            clearInterval(countdownInterval);
+            
+            if (idleOverlay) idleOverlay.style.display = "none";
+
+            // 30초 대기 타이머 시작
+            idleTimeout = setTimeout(() => {
+                // 시작 화면이 아니며, 관리자 화면이나 비밀번호 창도 아닐 때만 작동
+                const isPlaying = startScreenEl.style.display === "none" && 
+                                  adminModal.style.display === "none" && 
+                                  pwModal.style.display === "none";
+                
+                if (isPlaying) {
+                    showIdleWarning();
+                }
+            }, 30000); // 30초 무반응 시
+        }
+
+        function showIdleWarning() {
+            countdownValue = 10;
+            idleCountdownText.innerText = countdownValue;
+            idleOverlay.style.display = "flex";
+
+            countdownInterval = setInterval(() => {
+                countdownValue--;
+                idleCountdownText.innerText = countdownValue;
+
+                if (countdownValue <= 0) {
+                    clearInterval(countdownInterval);
+                    clearState(); // 로컬 스토리지 삭제
+                    location.reload(); // 새로고침하여 완벽하게 초기 화면으로 리셋
+                }
+            }, 1000);
+        }
+
+        // 취소 버튼 누르거나, 화면 어디든 터치/클릭하면 타이머 리셋 및 경고창 사라짐
+        idleCancelBtn.addEventListener("click", resetIdleTimer);
+        ['click', 'touchstart', 'mousemove', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, resetIdleTimer);
+        });
+
+        resetIdleTimer(); // 최초 실행
 
         // ======================= 관리자 모드 열기 이벤트 =======================
         adminBtn.onclick = () => { 
@@ -777,7 +837,7 @@
                     adminModal.style.display = "flex";
                     resetForm(); 
                     renderAdminList();
-                    fetchAdminRankings(); // 🏆 관리자 창 열 때 랭킹 목록도 로드
+                    fetchAdminRankings(); 
                 } else {
                     alert("비밀번호가 틀렸습니다.");
                 }
@@ -806,7 +866,6 @@
                 alert("이름을 입력해주세요.");
                 return;
             }
-            // 자바스크립트 로직 측면 글자 수 10자 제한 적용
             if(val.length > 10) {
                 alert("이름은 최대 10글자까지만 입력 가능합니다.");
                 return;
@@ -823,7 +882,6 @@
                 playerName = val;
                 try { localStorage.setItem('playerName', val); } catch(e) {}
                 
-                // 등록 완료 후 등록창 숨기기
                 registerRankingContainer.style.display = "none";
             } catch (e) {
                 alert("랭킹 등록에 실패했습니다: " + e.message);
@@ -1208,12 +1266,11 @@
             if (currentQuestionIndex < currentPlayQueue.length) {
                 loadQuestion(false);
             } 
-            // 💡 히든 스테이지 진입 조건: 하트를 하나도 안 잃었을 경우 (currentLives === maxLives)
             else if (!inHiddenStage && currentLives === maxLives && hiddenQuizzes.length > 0) {
                 inHiddenStage = true;
                 quizDiv.style.display = "none";
                 resultEl.style.display = "block";
-                resultEl.innerHTML = `<h2 style="color:#8e44ad; font-size: 2.2rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);">🚪 비밀의 방 입장!</h2><p style="font-size:1.2rem; color:#555;">단 한 문제도 틀리지 않은 진정한 실력자군요.<br>보너스 문제를 출제합니다!</p>`;
+                resultEl.innerHTML = `<h2 style="color:#8e44ad; font-size: 2.2rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.3);">🚪 비밀의 방 입장!</h2><p style="font-size:1.2rem; color:#555;">단 한 번도 틀리지 않은 진정한 실력자군요.<br>보너스 문제를 출제합니다!</p>`;
                 
                 setTimeout(() => {
                     resultEl.style.display = "none";
@@ -1232,7 +1289,6 @@
             }
         }
 
-        // 🏆 점수별 칭호 부여 함수
         function getTitle(score) {
             if (score <= 3) return "🌱 동네 뒷산 산책러";
             if (score <= 7) return "🥾 열정적인 프로 등산러";
@@ -1240,7 +1296,6 @@
             return "👑 전설의 에베레스트 정복자";
         }
 
-        // 🏆 현재 내 점수로 예상 순위 계산
         async function getExpectedRank(finalScore) {
             try {
                 const { count, error } = await supabase.from('rankings').select('*', { count: 'exact', head: true }).gt('score', finalScore);
@@ -1290,7 +1345,6 @@
         
         restartBtn.onclick = initStartScreen;
 
-        // ======================= 🔄 브라우저 렉(충돌) 방지 1초 단위 안전 갱신 로직 =======================
         async function fetchRankingsLoop() {
             try {
                 const { data, error } = await supabase.from('rankings').select('name, score').order('score', { ascending: false }).limit(50);
@@ -1311,7 +1365,6 @@
                     if (listEl) listEl.innerHTML = html;
                 }
             } catch(e) {}
-            // 통신 완료 후 1초 대기 (네트워크 과부하 방지)
             setTimeout(fetchRankingsLoop, 1000); 
         }
 
@@ -1328,15 +1381,12 @@
                     document.getElementById('stat-avg').innerText = `${avg}점`;
                 }
             } catch(e) {}
-            // 통신 완료 후 1초 대기
             setTimeout(fetchAdminStatsLoop, 1000);
         }
 
-        // 루프 최초 실행
         fetchRankingsLoop();
         fetchAdminStatsLoop();
 
-        // ======================= 🏆 관리자 랭킹 관리 로직 =======================
         async function fetchAdminRankings() {
             try {
                 const { data, error } = await supabase.from('rankings').select('id, name, score').order('score', { ascending: false });
@@ -1393,7 +1443,6 @@
             }
         };
 
-        // ======================= 관리자 문제 관리 로직 =======================
         document.getElementById("reset-stats-btn").onclick = async () => {
             if(confirm("정말 모든 통계 데이터(참여 인원, 완주, 평균 점수)를 초기화하시겠습니까?\n※ 퀴즈 문제는 삭제되지 않습니다.")) {
                 try {
@@ -1406,7 +1455,6 @@
             }
         };
 
-        // ======================= 관리자 퀴즈 등록/수정/미리보기 로직 =======================
         function updatePreview() {
             const q = document.getElementById("new-question").value || "질문이 입력되면 여기에 보입니다.";
             document.getElementById("preview-q").innerText = q;
