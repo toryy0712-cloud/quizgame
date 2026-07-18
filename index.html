@@ -756,58 +756,56 @@
         const cancelEditBtn = document.getElementById("cancel-edit-btn");
         const editModeIndicator = document.getElementById("edit-mode-indicator");
 
-        // ======================= 🔄 무인 자동 초기화 (Kiosk Idle Reset) =======================
+        // ======================= 🔄 무인 자동 초기화 (Kiosk Idle Reset) 버그 완벽 수정판 =======================
         let idleTimeout;
         let countdownInterval;
         let countdownValue = 10;
         
-        const idleOverlay = document.getElementById("idle-warning-overlay");
-        const idleCountdownText = document.getElementById("idle-countdown");
-        const idleCancelBtn = document.getElementById("idle-cancel-btn");
-
         function resetIdleTimer() {
             clearTimeout(idleTimeout);
             clearInterval(countdownInterval);
             
+            const idleOverlay = document.getElementById("idle-warning-overlay");
+            const idleCountdownText = document.getElementById("idle-countdown");
             if (idleOverlay) idleOverlay.style.display = "none";
 
             // 30초 대기 타이머 시작
             idleTimeout = setTimeout(() => {
-                // 시작 화면이 아니며, 관리자 화면이나 비밀번호 창도 아닐 때만 작동
+                const startScreenEl = document.getElementById("start-screen");
+                const adminModal = document.getElementById("admin-modal");
+                const pwModal = document.getElementById("password-modal");
+
+                // 시작 화면이 꺼져있고(게임 중이거나 결과창), 관리자/비번 모달창이 안 떠 있을 때만 발동
                 const isPlaying = startScreenEl.style.display === "none" && 
-                                  adminModal.style.display === "none" && 
-                                  pwModal.style.display === "none";
+                                  adminModal.style.display !== "flex" && 
+                                  pwModal.style.display !== "flex";
                 
                 if (isPlaying) {
-                    showIdleWarning();
+                    countdownValue = 10;
+                    idleCountdownText.innerText = countdownValue;
+                    idleOverlay.style.display = "flex";
+
+                    countdownInterval = setInterval(() => {
+                        countdownValue--;
+                        idleCountdownText.innerText = countdownValue;
+
+                        if (countdownValue <= 0) {
+                            clearInterval(countdownInterval);
+                            clearState(); // 캐시 지우고 처음으로
+                            location.reload(); 
+                        }
+                    }, 1000);
                 }
-            }, 30000); // 30초 무반응 시
+            }, 30000); // 30초
         }
 
-        function showIdleWarning() {
-            countdownValue = 10;
-            idleCountdownText.innerText = countdownValue;
-            idleOverlay.style.display = "flex";
-
-            countdownInterval = setInterval(() => {
-                countdownValue--;
-                idleCountdownText.innerText = countdownValue;
-
-                if (countdownValue <= 0) {
-                    clearInterval(countdownInterval);
-                    clearState(); // 로컬 스토리지 삭제
-                    location.reload(); // 새로고침하여 완벽하게 초기 화면으로 리셋
-                }
-            }, 1000);
-        }
-
-        // 취소 버튼 누르거나, 화면 어디든 터치/클릭하면 타이머 리셋 및 경고창 사라짐
-        idleCancelBtn.addEventListener("click", resetIdleTimer);
+        document.getElementById("idle-cancel-btn").addEventListener("click", resetIdleTimer);
+        // 화면에 어떠한 액션이라도 발생하면 타이머 초기화
         ['click', 'touchstart', 'mousemove', 'keydown'].forEach(evt => {
             document.addEventListener(evt, resetIdleTimer);
         });
 
-        resetIdleTimer(); // 최초 실행
+        resetIdleTimer(); // 최초 로드 시 타이머 가동
 
         // ======================= 관리자 모드 열기 이벤트 =======================
         adminBtn.onclick = () => { 
