@@ -2,7 +2,7 @@ const CACHE_NAME = 'quiz-cache-v1';
 const urlsToCache = [
   './',
   './index.html',
-  './mountain-quiz.png'
+  './icon-192.png'
 ];
 
 self.addEventListener('install', event => {
